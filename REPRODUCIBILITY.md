@@ -47,11 +47,18 @@ Copy the survey Excel export to `data/original/`:
 cp /path/to/survey.xlsx data/original/
 ```
 
-The file used in the original analysis:
-- **Filename:** `export-community_technology_survey-2026-04-14-23-01-37.xlsx`
-- **SHA256:** _(see `output/<run_id>/audit/manifest.json` → `input.sha256`)_
-- **Rows:** 112 responses (67 complete, 45 partial)
+The file used in the original analysis (full dataset):
+- **Filename:** `export-community_technology_survey-2026-05-01-00-08-26.xlsx`
+- **SHA256:** `7e34c488746cd6f1a3b92b0d00437a20382d618e383af6507d55183924b05d4e`
+- **Rows:** 137 responses (80 complete, 57 partial)
 - **Columns:** 115
+
+An earlier partial export is also retained for reference:
+- **Filename:** `export-community_technology_survey-2026-04-14-23-01-37.xlsx`
+- **SHA256:** `27332bd6f4d8b6ba2fc7b5878638a5a9bf1baa4b998b242708bad0437aa5bd64`
+- **Rows:** 112 responses (67 complete, 45 partial)
+
+Both files are listed in `data/checksums/SHA256SUMS`.
 
 ### Step 2: Install dependencies
 
@@ -84,7 +91,7 @@ export OLLAMA_MODEL=llama3.2:latest
 
 ```bash
 python3 analysis/community_technology_survey_analysis.py all \
-  --input data/original/export-community_technology_survey-2026-04-14-23-01-37.xlsx
+  --input data/original/export-community_technology_survey-2026-05-01-00-08-26.xlsx
 ```
 
 This runs all stages sequentially and prints the run ID. The full run takes approximately 15–45 minutes depending on LLM speed.
@@ -122,11 +129,11 @@ python3 analysis/community_technology_survey_privacy.py \
 
 Exit code 0 = passes privacy checks. Exit code 1 = privacy requirements not met.
 
-### Step 7: Check output checksums
+### Step 7: Check input and sanitized dataset checksums
 
 ```bash
-# Verify all outputs match the published SHA256SUMS
-sha256sum --check output/package/SHA256SUMS
+# Verify input files and sanitized dataset against published checksums
+sha256sum --check data/checksums/SHA256SUMS
 ```
 
 ---
@@ -149,10 +156,12 @@ output/<run_id>/
     irr_results.json    # Krippendorff's alpha per question
   charts/
     *.png               # All generated charts
-  report.md             # Source markdown report
-  report.html           # Standalone HTML (charts embedded)
-  package/
-    SHA256SUMS          # Checksums of all tracked files
+    alt_text.json       # Accessibility alt text + data tables for each chart
+  report_part1.md       # Quantitative report (source markdown)
+  report_part1.html     # Quantitative report (standalone HTML, charts embedded)
+  report_part2.md       # Qualitative report (source markdown)
+  report_part2.html     # Qualitative report (standalone HTML)
+  ce_page_blocks.json   # CE page_block IDs for --update-existing publishes
 ```
 
 ---
@@ -166,7 +175,7 @@ Example: to verify the mean tool satisfaction score:
 import json
 with open("output/<run_id>/quant/quant_results.json") as f:
     q = json.load(f)
-print(q["q5_tool_satisfaction"]["mean"])   # → e.g., 3.646
+print(q["q5_tool_satisfaction"]["mean"])   # → 3.8 (N=80 completed responses)
 print(q["q5_tool_satisfaction"]["bootstrap_95ci_mean"])
 ```
 

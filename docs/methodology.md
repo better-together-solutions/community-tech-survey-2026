@@ -25,7 +25,7 @@ The instrument was designed in-house using the Formbricks open-source survey pla
 - Binary Yes/No
 - Optional contact and consent fields
 
-**Full instrument:** All questions and response options are reproduced in `docs/survey_instrument.md`.
+**Full instrument:** All questions and response options are published in Appendix A of the live report at https://communityengine.app/community-technology-survey-2026-part-1
 
 ---
 

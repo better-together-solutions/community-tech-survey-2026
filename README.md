@@ -14,7 +14,7 @@ This repository is the complete, self-contained publication package for the BTS 
 
 - **Survey data** — anonymised (k-anonymised, PII-free) dataset
 - **Analysis code** — full Python pipeline, reproducible
-- **Report** — `output/report.html` (standalone, all charts embedded)
+- **Report** — `output/<run_id>/report_part1.html` (quantitative) and `report_part2.html` (qualitative)
 - **Methodology** — full statistical and qualitative methods documentation
 - **Privacy assessment** — PIPEDA compliance and k-anonymity verification
 - **Codebook** — qualitative coding prompts published verbatim
@@ -74,13 +74,15 @@ community-tech-survey-2026/
     sanitized/     # Published k-anonymised dataset
     checksums/     # SHA256SUMS
   docs/
-    methodology.md    # Statistical and qualitative methods
-    codebook.md       # Qualitative coding prompts (operational codebook)
-    privacy.md        # Privacy impact assessment
-    limitations.md    # Limitations and threats to validity
+    methodology.md         # Statistical and qualitative methods
+    codebook.md            # Qualitative coding prompts (operational codebook)
+    privacy.md             # Privacy impact assessment
+    limitations.md         # Limitations and threats to validity
+    accuracy-audit.md      # Log of data corrections
+    accessibility/
+      terms.json           # 18 statistical terms (plain + technical definitions)
   schemas/
     quant_results.schema.json
-    qual_results.schema.json
   output/           # Generated reports and analysis (gitignored except package/)
   REPRODUCIBILITY.md
   README.md
@@ -89,7 +91,7 @@ community-tech-survey-2026/
 ## Key Findings
 
 See `output/report.html` for the full report. Headlines:
-- N = 112 responses (67 complete); 8 sector types
+- N = 137 responses (80 complete); 8 sector types
 - Strong support for community ownership: majority rate it "very" or "extremely" important
 - Co-operative model increases trust and adoption likelihood for a large majority
 - Top platform priority: accessibility and ease of use
@@ -104,7 +106,7 @@ See `output/report.html` for the full report. Headlines:
 ```
 Better Together Solutions. (2026). Community Technology Survey: Community demand
 and trust conditions for a platform co-operative. Newfoundland & Labrador, Canada.
-https://github.com/bts/community-tech-survey-2026
+https://github.com/better-together-solutions/community-tech-survey-2026
 ```
 
 ## Contact
