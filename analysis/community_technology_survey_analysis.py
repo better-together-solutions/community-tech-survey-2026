@@ -235,6 +235,9 @@ Q12_ORDINAL = {
     "somewhat_more_likely": 3,
     "much_more_likely": 4,
 }
+Q52_ORDER = [
+    "very_sensitive", "somewhat_sensitive", "not_very_sensitive", "not_sure", "depends_who_pays",
+]
 
 Q7_ITEMS = [
     "q7_privacy", "q7_human_support", "q7_accessibility", "q7_connection",
@@ -509,7 +512,7 @@ def cmd_quant(args: argparse.Namespace) -> None:
             "kurtosis": round(float(spstats.kurtosis(vals)), 3),
             "bootstrap_95ci_mean": [ci_lo, ci_hi],
             "shapiro_wilk_p": round(float(p_normal), 4) if p_normal is not None else None,
-            "distribution": _freq_table(sat.astype(str)),
+            "distribution": _freq_table(sat.astype(str), ordinal_order=["1.0", "2.0", "3.0", "4.0", "5.0"]),
         }
 
     # ── Q7: Feature importance (Likert scale) ──────────────────────────────
@@ -632,7 +635,7 @@ def cmd_quant(args: argparse.Namespace) -> None:
             continue
         series_id = completed[col_id].dropna()
         series_ord = completed[ord_col].dropna() if ord_col in completed.columns else pd.Series(dtype=float)
-        freq = _freq_table(series_id)
+        freq = _freq_table(series_id, ordinal_order=order_keys)
         ord_vals = series_ord.values.astype(float) if len(series_ord) else np.array([])
         results[qcol] = {
             "label": qlabel,
@@ -660,15 +663,15 @@ def cmd_quant(args: argparse.Namespace) -> None:
             }
 
     # ── Categorical: Single-select distributions ───────────────────────────
-    for col, label in [
-        ("q52_price_sensitivity_id", "Price sensitivity"),
-        ("q47_followup_id", "Open to follow-up"),
-        ("q48_updates_id", "Want updates"),
-        ("q16_interest_id", "Interest in community platform (general public)"),
+    for col, label, ord_order in [
+        ("q52_price_sensitivity_id", "Price sensitivity", Q52_ORDER),
+        ("q47_followup_id", "Open to follow-up", None),
+        ("q48_updates_id", "Want updates", None),
+        ("q16_interest_id", "Interest in community platform (general public)", None),
     ]:
         if col in completed.columns:
             sub = completed[col].dropna()
-            results[col] = {"label": label, "n": int(len(sub)), "distribution": _freq_table(sub)}
+            results[col] = {"label": label, "n": int(len(sub)), "distribution": _freq_table(sub, ordinal_order=ord_order)}
 
     # ── Missing data report ────────────────────────────────────────────────
     missingness_completed = {
