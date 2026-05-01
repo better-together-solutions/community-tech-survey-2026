@@ -35,7 +35,7 @@ This document provides complete step-by-step instructions for independently repl
 ### Step 0: Clone the repository
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/better-together-solutions/community-tech-survey-2026
 cd community-tech-survey-2026
 ```
 
