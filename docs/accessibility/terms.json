@@ -1,0 +1,92 @@
+[
+  {
+    "term": "Mean (M)",
+    "plain": "The average — all values added up and divided by the number of responses. If 10 people rate something and the total is 38, the mean is 3.8.",
+    "technical": "Arithmetic mean of valid (non-missing) responses. Symbol: M."
+  },
+  {
+    "term": "Median (Mdn)",
+    "plain": "The middle value when all responses are lined up from lowest to highest. Half of responses fall above it, half below. Less affected by a few very high or very low answers than the mean.",
+    "technical": "50th percentile of the distribution. Preferred over mean for skewed data. Symbol: Mdn."
+  },
+  {
+    "term": "Standard Deviation (SD)",
+    "plain": "A measure of how spread out responses are. A low SD means most people gave similar answers; a high SD means answers were all over the place.",
+    "technical": "Square root of the average squared deviation from the mean. Measures dispersion around the central tendency. Symbol: SD."
+  },
+  {
+    "term": "Confidence Interval (CI)",
+    "plain": "A range that most likely contains the true answer. For example, '95% confidence interval: 3.56 to 4.03' means we are 95% sure the true average for the whole population falls somewhere in that range.",
+    "technical": "An interval estimate of a population parameter, constructed such that the specified proportion (e.g. 95%) of intervals produced by the same method would contain the true parameter."
+  },
+  {
+    "term": "Bootstrap Confidence Interval",
+    "plain": "A way of estimating the range of likely true values by repeatedly re-sampling the data we collected (in this study, 10,000 times) and seeing how much the result varies each time.",
+    "technical": "Non-parametric resampling procedure (Efron & Tibshirani, 1993). B = 10,000 iterations, random seed = 42. Does not assume normality."
+  },
+  {
+    "term": "Cronbach's Alpha (α)",
+    "plain": "A measure of whether a set of questions all consistently measure the same underlying thing. A score above 0.7 means the questions hang together well enough to be treated as a single scale.",
+    "technical": "Internal consistency reliability coefficient (Cronbach, 1951). Ranges 0–1. Interpretation: ≥0.90 excellent, 0.80–0.89 good, 0.70–0.79 acceptable, 0.60–0.69 questionable, <0.60 poor."
+  },
+  {
+    "term": "Skewness",
+    "plain": "Whether responses clustered toward one end of the scale. A negative skew (like in this survey's satisfaction ratings) means most people gave high ratings, with only a few giving low ones — like a left-leaning pile.",
+    "technical": "Third standardised moment of the distribution. Negative skew = left tail; positive skew = right tail. Computed via pandas/scipy skew()."
+  },
+  {
+    "term": "Kruskal-Wallis Test (H)",
+    "plain": "A statistical test for comparing groups to see if their ratings differ in a meaningful way — for example, whether non-profits rate features differently than the general public. It works even when groups are very different in size.",
+    "technical": "Non-parametric rank-based test for k independent samples (Kruskal & Wallis, 1952). Used here because group sizes are highly unequal and normality cannot be assumed. Effect size: epsilon-squared (ε²)."
+  },
+  {
+    "term": "N (Sample Size)",
+    "plain": "The number of people included in a calculation. Because some questions were optional or only shown to certain respondent types, the N for each question may be smaller than the total number of survey respondents.",
+    "technical": "Count of valid (non-missing) responses for a given variable. Reported per question; denominators for multi-select items reflect question-level response counts, not total survey N."
+  },
+  {
+    "term": "Frequency Distribution",
+    "plain": "A table or chart showing how often each response option was chosen — for example, how many people picked 'Too expensive' versus 'Poor privacy'.",
+    "technical": "Count and percentage of observations in each category of a categorical or ordinal variable."
+  },
+  {
+    "term": "Likert Scale",
+    "plain": "A rating scale with evenly spaced options — for example, 1 = Not at all important, 2 = Slightly important, 3 = Moderately important, 4 = Very important, 5 = Extremely important. Used widely in surveys to measure opinions and attitudes.",
+    "technical": "Psychometric scale using ordered, symmetric response options. Treated as interval-level for mean/CI calculations following Norman (2010) and Sullivan & Artino (2013); non-parametric statistics also reported as robustness check."
+  },
+  {
+    "term": "Ordinal Variable",
+    "plain": "A variable where the response options have a meaningful order (e.g. 'Not familiar' → 'Very familiar') but the gaps between levels are not necessarily equal.",
+    "technical": "Variable whose values can be ranked but for which arithmetic operations are not strictly valid. Analysed here using median, IQR, and Kruskal-Wallis tests."
+  },
+  {
+    "term": "Multi-select / Multiple Response",
+    "plain": "A question where respondents could choose more than one answer. Percentages for these questions can add up to more than 100% because each person may have selected several options. The percentage shown is 'of respondents who answered this question', not 'of total respondents'.",
+    "technical": "Forced-choice multiple-response item. Percentages are row percentages (proportion of respondents selecting each option), not column percentages. Sum exceeds 100%."
+  },
+  {
+    "term": "Pareto Chart",
+    "plain": "A bar chart where the bars are arranged from most common to least common, with a line showing the running total. It makes it easy to see at a glance which issues account for the majority of responses.",
+    "technical": "Combined bar-and-line chart ordering categories by descending frequency. The cumulative percentage line follows the 80/20 rule (Pareto principle) — used here for adoption barriers (Q50)."
+  },
+  {
+    "term": "Suppressed Cell (n < 5)",
+    "plain": "When a group has fewer than 5 respondents, we do not report detailed statistics for that group on its own. This protects the privacy of the individuals in that group, who might otherwise be identifiable.",
+    "technical": "Small-cell suppression per Statistics Canada (2012) and k-anonymity standards (Sweeney, 2002). Cross-tabulations with n < 5 per cell are replaced with a suppression note."
+  },
+  {
+    "term": "IRR / Krippendorff's Alpha (α_K)",
+    "plain": "A measure of how consistently two independent reviewers (or two AI coding passes) labelled the same responses. A score above 0.67 means acceptable agreement for exploratory research.",
+    "technical": "Inter-rater reliability coefficient for nominal data (Hayes & Krippendorff, 2007). α_K ≥ 0.80: strong; α_K ≥ 0.67: acceptable minimum; α_K < 0.67: interpret as tentative."
+  },
+  {
+    "term": "Reflexive Thematic Analysis (RTA)",
+    "plain": "A method for finding patterns and themes in open-text answers. Rather than counting words, it involves reading responses carefully to identify recurring ideas, concerns, or values — while being transparent about how the researcher's perspective shapes what they find.",
+    "technical": "Qualitative methodology following Braun & Clarke (2021). Six phases: familiarisation, initial coding, theme search, theme review, defining/naming, write-up. Applied here with AI-assisted first-pass coding."
+  },
+  {
+    "term": "p-value",
+    "plain": "A number that tells you how likely it would be to see a result at least this large if there were actually no real difference between groups. A p-value below 0.05 is traditionally considered 'statistically significant' — meaning the result is unlikely to be due to chance alone.",
+    "technical": "Probability of obtaining a test statistic at least as extreme as observed, under the null hypothesis. Bonferroni correction applied for multiple comparisons within question families: α_corrected = 0.05 / k."
+  }
+]

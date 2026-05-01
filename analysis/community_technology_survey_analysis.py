@@ -1481,6 +1481,29 @@ def cmd_visualize(args: argparse.Namespace) -> None:
 # ── Stage 6: Report Assembly ──────────────────────────────────────────────────
 
 
+def _glossary_md(terms: list[dict]) -> list[str]:
+    """Return Appendix F markdown lines from terms.json entries."""
+    lines = [
+        "## Appendix F: Glossary of Terms",
+        "",
+        "This glossary explains the statistical and research terms used throughout this report. "
+        "Each entry gives a plain-language explanation followed by the technical definition for readers who want it.",
+        "",
+    ]
+    for entry in terms:
+        term = entry.get("term", "")
+        plain = entry.get("plain", "")
+        technical = entry.get("technical", "")
+        lines += [
+            f"**{term}**",
+            f": {plain}",
+            f"",
+            f"*Technical: {technical}*",
+            "",
+        ]
+    return lines
+
+
 def cmd_report(args: argparse.Namespace) -> None:
     tranche = getattr(args, "tranche", "all")  # "quant" | "qual" | "all"
     run_dir = _run_id_dir(args.run_id)
@@ -1489,6 +1512,10 @@ def cmd_report(args: argparse.Namespace) -> None:
         sys.exit("Run 'quant' stage first")
     quant = json.loads(quant_file.read_text())
     manifest = json.loads((run_dir / "audit" / "manifest.json").read_text())
+
+    # Load glossary terms (plain-language + technical definitions)
+    _terms_path = ROOT / "docs" / "accessibility" / "terms.json"
+    _glossary_terms: list[dict] = json.loads(_terms_path.read_text()) if _terms_path.exists() else []
 
     df = load_df(run_dir)
     n_completed = quant.get("n_completed", "?")
@@ -2018,6 +2045,9 @@ def cmd_report(args: argparse.Namespace) -> None:
         f"**Generated:** {_now_iso()}",
         "",
     ]
+
+    if _glossary_terms:
+        report_lines += _glossary_md(_glossary_terms)
 
     # Output filename varies by tranche
     _report_name = {
