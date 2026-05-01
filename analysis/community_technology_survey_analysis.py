@@ -1501,7 +1501,7 @@ def cmd_report(args: argparse.Namespace) -> None:
         "",
         "The survey was administered online via [Formbricks](https://formbricks.com) on the BTS self-hosted "
         "instance at `forms.btsdev.ca`. It was distributed through community networks, social media, and "
-        "direct outreach between April 9–14, 2026. No financial incentive was offered. Participation was "
+        "direct outreach between March 27 – April 30, 2026. No financial incentive was offered. Participation was "
         "voluntary and anonymous.",
         "",
         "The instrument comprised 12 sections and up to 55 questions per respondent, with branching "

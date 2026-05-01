@@ -44,7 +44,7 @@ The instrument was designed in-house using the Formbricks open-source survey pla
 
 ## 4. Data Collection
 
-**Collection period:** April 9–14, 2026 (6 days).
+**Collection period:** March 27 – April 30, 2026 (35 days).
 **Platform:** Formbricks v2.x, self-hosted on BTS infrastructure.
 **Access:** Public URL, no authentication required.
 **Total responses:** 112 (67 completed, 45 partial).

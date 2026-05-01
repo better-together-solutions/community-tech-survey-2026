@@ -127,3 +127,38 @@ Re-generated outputs confirmed against this audit before re-publication.
 ---
 
 *This document is part of the permanent methodological record for the 2026 BTS Community Technology Survey. It is published alongside the report to support transparency and replication.*
+
+---
+
+## Addendum — 2026-05-01: Incomplete dataset used in original run
+
+### A-010 — CRITICAL: Original pipeline run used an incomplete export (N=112 instead of N=137)
+
+**Discovered:** 2026-05-01, during correction of the collection period dates.
+**Original run ID:** `2026-05-01T005004Z`
+**Corrected run ID:** `2026-05-01T032821Z`
+
+**Problem:** The pipeline auto-detected `data/original/export-community_technology_survey-2026-04-14-23-01-37.xlsx` as the latest export. This file contained only the responses collected through April 14, 2026. The full dataset — covering the complete collection period through April 30, 2026 — existed on `bts-lt-0` (the analyst's offsite laptop) and had not yet been copied to the analysis workstation.
+
+**Impact on statistics:**
+
+| Metric | Incomplete run (N=112/67) | Correct run (N=137/80) |
+|--------|--------------------------|------------------------|
+| Total responses | 112 | **137** |
+| Completed responses | 67 | **80** |
+| Completion rate | 59.8% | **58.4%** |
+| Q5 satisfaction mean | 3.97 | **3.80** |
+| Q5 SD | 0.969 | **1.06** |
+| Q10 ownership (very+extremely important) | 70% | **68%** |
+| Q11 trust increase | 81% | **81%** |
+| Q6 #1 problem | too_expensive (37.3%) | **too_expensive (37.5%)** |
+| Q6 #2 problem | poor_privacy (29.9%) | **corporate_dependence (31.2%)** |
+| Q7 top feature | Accessibility & ease of use (4.714) | **Accessibility & ease of use (4.605)** |
+
+**Key finding:** The directional conclusions are consistent across both runs. Trust and adoption metrics (Q11 81%, Q12 ~85%) are essentially unchanged. The Q5 mean drops slightly (3.97 → 3.80), remaining in the "moderately satisfied" range — the corrected framing from A-001 holds. Q6 rank order shifts slightly: corporate dependence rises to #2, with poor privacy at #3.
+
+**Root cause:** The full export was only available on the analyst's local device (`bts-lt-0`) and had not been synced to the shared repository before the pipeline ran. The fallback auto-detection logic correctly picked the most recent *available* file, but that file was not the final export.
+
+**Resolution:** Full export (`export-community_technology_survey-2026-05-01-00-08-26.xlsx`, 137 rows, March 27 – April 30 2026) copied from `bts-lt-0` via SSH/Headscale and added to `data/original/`. Pipeline re-run as `2026-05-01T032821Z`. All published outputs updated from the corrected run.
+
+**Collection period (corrected):** March 27, 2026 – April 30, 2026 (35 days).
