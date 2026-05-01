@@ -186,7 +186,7 @@ print(q["q5_tool_satisfaction"]["bootstrap_95ci_mean"])
 ```
 Better Together Solutions. (2026). Community Technology Survey: Community demand
 and trust conditions for a platform co-operative (Version 1.0) [Data set and report].
-https://github.com/bts/<repo>
+https://github.com/better-together-solutions/community-tech-survey-2026
 
 Analysis code: MIT License
 Data and report: CC BY 4.0 — https://creativecommons.org/licenses/by/4.0/
