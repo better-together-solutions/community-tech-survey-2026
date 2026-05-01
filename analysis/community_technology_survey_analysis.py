@@ -1341,8 +1341,25 @@ def cmd_report(args: argparse.Namespace) -> None:
     q12_positive = _pct_positive("q12_adoption", ["somewhat_more_likely", "much_more_likely"])
 
     q5_mean = quant.get("q5_tool_satisfaction", {}).get("mean", "N/A")
+    q5_sd = quant.get("q5_tool_satisfaction", {}).get("sd", "N/A")
+    q5_skewness = quant.get("q5_tool_satisfaction", {}).get("skewness", None)
+    q5_ci = quant.get("q5_tool_satisfaction", {}).get("bootstrap_95ci_mean", ["N/A", "N/A"])
     alpha = quant.get("q7_feature_importance", {}).get("cronbach_alpha", {}).get("value", "N/A")
-    top_feature = (quant.get("q7_feature_importance", {}).get("items_ranked") or [{}])[0].get("label", "N/A")
+    _q7_items = quant.get("q7_feature_importance", {}).get("items_ranked") or [{}]
+    top_feature = _q7_items[0].get("label", "N/A")
+    second_feature = _q7_items[1].get("label", "N/A") if len(_q7_items) > 1 else "N/A"
+    third_feature = _q7_items[2].get("label", "N/A") if len(_q7_items) > 2 else "N/A"
+
+    # Derive top Q6 problems from actual data (not narrative)
+    _q6_ft = quant.get("q6_problems_id", {}).get("frequency_table", [])
+    _q6_top = [r["value"].replace("_", " ") for r in _q6_ft[:3]] if _q6_ft else []
+    _q6_top_str = ", ".join(_q6_top) if _q6_top else "N/A"
+    _q6_top1_pct = _q6_ft[0]["pct"] if _q6_ft else "N/A"
+
+    # Q5 satisfaction distribution for accurate framing
+    _q5_dist = quant.get("q5_tool_satisfaction", {}).get("distribution", [])
+    _q5_pct_high = round(sum(r["pct"] for r in _q5_dist if float(r["value"]) >= 4), 1) if _q5_dist else "N/A"
+    _q5_pct_dissatisfied = round(sum(r["pct"] for r in _q5_dist if float(r["value"]) <= 2), 1) if _q5_dist else "N/A"
 
     # Load key qualitative themes
     def _top_themes(col: str) -> str:
@@ -1400,15 +1417,25 @@ def cmd_report(args: argparse.Namespace) -> None:
             return f"![{name}](charts/{name})"
         return f"_[chart: {name} — run visualize stage]_"
 
-    def _freq_md(q_key: str, top_n: int = 6) -> str:
+    def _freq_md(q_key: str, top_n: int = 6, note: str = "") -> str:
         rows = []
         if q_key in quant:
-            dist = quant[q_key].get("frequency_table") or quant[q_key].get("distribution") or quant[q_key].get("frequency_distribution") or []
+            entry = quant[q_key]
+            # Handle nested respondent_types structure
+            dist = (
+                entry.get("frequency_table")
+                or entry.get("distribution")
+                or entry.get("frequency_distribution")
+                or entry.get("all_responses")  # respondent_types uses this key
+                or []
+            )
             for r in dist[:top_n]:
                 rows.append(f"| {r['value'].replace('_',' ')} | {r['n']} | {r['pct']}% |")
         if not rows:
             return "_No data_"
-        return "| Response | n | % |\n|---|---|---|\n" + "\n".join(rows)
+        header = "| Response | n | % |\n|---|---|---|\n"
+        footer = f"\n\n_{note}_" if note else ""
+        return header + "\n".join(rows) + footer
 
     _tranche_subtitle = {
         "quant": ": Quantitative Findings (Part 1 of 2)",
@@ -1450,16 +1477,19 @@ def cmd_report(args: argparse.Namespace) -> None:
         "",
         f"Three headline findings stand out:",
         "",
-        f"1. **Strong dissatisfaction with the status quo.** Respondents rate current digital tool satisfaction "
-        f"at an average of **{q5_mean}/5**, with the most cited problems being platform fragmentation, "
-        f"corporate dependency, and lack of community ownership.",
+        f"1. **Broadly satisfied, but with targeted concerns.** Respondents rate current digital tool satisfaction "
+        f"at an average of **{q5_mean}/5** (Mdn=4.0; {_q5_pct_high}% rated 4 or 5; only {_q5_pct_dissatisfied}% "
+        f"rated 1 or 2). Despite overall positive satisfaction, specific concerns are widely cited: "
+        f"{_q6_top_str} ({_q6_top1_pct}%, {_q6_ft[1]['pct'] if len(_q6_ft)>1 else 'N/A'}%, "
+        f"{_q6_ft[2]['pct'] if len(_q6_ft)>2 else 'N/A'}% respectively) — suggesting conditional "
+        f"satisfaction rather than endorsement of the status quo.",
         "",
-        f"2. **Overwhelming support for community ownership.** {q10_positive} of respondents rated community "
+        f"2. **Strong support for community ownership.** {q10_positive} of respondents rated community "
         f"ownership as 'very' or 'extremely' important. {q11_positive} said a co-operative model would make "
         f"them *more likely to trust* the platform; {q12_positive} said it would make them *more likely to use* it.",
         "",
-        f"3. **{top_feature} is the single most important platform feature**, followed closely by long-term "
-        f"reliability and accessibility. Internal consistency across the eight feature items is "
+        f"3. **{top_feature} is the single most important platform feature**, followed by {second_feature} "
+        f"and {third_feature}. Internal consistency across the eight feature items is "
         f"{'strong' if isinstance(alpha, float) and alpha >= 0.80 else 'acceptable'} "
         f"(Cronbach's α = {alpha}).",
         "",
@@ -1513,8 +1543,14 @@ def cmd_report(args: argparse.Namespace) -> None:
         report_lines += [
             f"Respondents rated their overall satisfaction with current digital tools at "
             f"**M = {s['mean']}** (SD = {s['sd']}; Mdn = {s['median']}; N = {s['n']}). "
-            f"The distribution shows a moderate positive skew (skewness = {s['skewness']}), "
-            f"indicating most respondents are 'somewhat satisfied' but few are 'very satisfied.'",
+            + (
+                f"The distribution is moderately negatively skewed (skewness = {s['skewness']}), "
+                f"indicating that most respondents cluster toward the higher end of the scale — "
+                f"{round(sum(r['pct'] for r in s.get('distribution',[]) if float(r['value']) >= 4), 1)}% "
+                f"rated 4 or 5 — while a minority tail toward dissatisfaction."
+                if s.get("skewness") is not None and float(s["skewness"]) < 0
+                else f"The distribution shows a skewness of {s.get('skewness', 'N/A')}."
+            ),
             "",
             f"Bootstrap 95% CI for mean satisfaction: [{s['bootstrap_95ci_mean'][0]}, {s['bootstrap_95ci_mean'][1]}].",
             "",
@@ -1643,20 +1679,37 @@ def cmd_report(args: argparse.Namespace) -> None:
 
     # §6 Adoption & Economic Readiness — always (pure quant)
     if tranche != "qual":
+        # Derive sub-sample denominators by reverse-engineering from freq table (n / pct * 100)
+        _q50_ft = quant.get("q50_barriers_id", {}).get("frequency_table", [])
+        _q50_n = quant.get("q50_barriers_id", {}).get("n") or (
+            round(_q50_ft[0]["n"] / (_q50_ft[0]["pct"] / 100)) if _q50_ft else "?"
+        )
+        _q51_ft = quant.get("q51_support_id", {}).get("frequency_table", [])
+        _q51_n = quant.get("q51_support_id", {}).get("n") or (
+            round(_q51_ft[0]["n"] / (_q51_ft[0]["pct"] / 100)) if _q51_ft else "?"
+        )
+        _q52_n = quant.get("q52_price_sensitivity_id", {}).get("n", "?")
+
         report_lines += [
             "## 6. Adoption & Economic Readiness",
             "",
             _chart_embed("adoption_barriers.png"),
             "",
-            "**Adoption barriers (multi-select):**",
+            f"**Adoption barriers (multi-select, N={_q50_n} respondents who answered Q50):**",
+            "",
+            f"> **Denominator note:** Percentages below are of the {_q50_n} respondents who answered "
+            f"this question, not of the full completed sample (N={n_completed}). "
+            f"Item non-response on adoption questions is common in surveys of this type.",
             "",
             _freq_md("q50_barriers_id"),
             "",
-            "**Support needed (multi-select):**",
+            f"**Support needed (multi-select, N={_q51_n} respondents who answered Q51):**",
             "",
             _freq_md("q51_support_id"),
             "",
-            "**Price sensitivity:**",
+            f"**Price sensitivity (N={_q52_n} respondents who answered Q52; "
+            f"{round(100 * int(_q52_n) / n_completed, 1) if str(_q52_n).isdigit() else '?'}% "
+            f"of completed responses):**",
             "",
             _freq_md("q52_price_sensitivity_id"),
             "",
