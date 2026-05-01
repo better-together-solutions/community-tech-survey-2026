@@ -1139,6 +1139,73 @@ def cmd_visualize(args: argparse.Namespace) -> None:
     plt.tight_layout()
     _save(fig, "ownership_trust.png")
 
+    # ── Q7 × Segment: feature importance by respondent type ───────────────
+    # Only non-suppressed segments are plotted; suppressed cells are noted.
+    if "q7_feature_importance" in quant:
+        heatmap = quant["q7_feature_importance"].get("segment_heatmap", {})
+        items_ranked = quant["q7_feature_importance"].get("items_ranked", [])
+        item_keys = [it["item"] for it in items_ranked]
+        item_labels = [it["label"] for it in items_ranked]
+        overall_means = {it["item"]: it["mean"] for it in items_ranked}
+        active_segs = {seg: data for seg, data in heatmap.items() if isinstance(data, dict)}
+        suppressed_segs = [seg for seg, data in heatmap.items() if isinstance(data, str)]
+        if active_segs and item_keys:
+            all_series = {"Overall (N=67)": [overall_means.get(k, 0) for k in item_keys]}
+            all_series.update({
+                seg.replace("_", " ").title(): [data.get(k, 0) for k in item_keys]
+                for seg, data in active_segs.items()
+            })
+            n_series = len(all_series)
+            x = np.arange(len(item_labels))
+            width = 0.8 / n_series
+            fig, ax = plt.subplots(figsize=(13, 6))
+            for i, (series_label, means) in enumerate(all_series.items()):
+                offset = (i - n_series / 2 + 0.5) * width
+                bars = ax.bar(x + offset, means, width, label=series_label,
+                              color=PALETTE[i % len(PALETTE)], edgecolor="white")
+                ax.bar_label(bars, fmt="%.2f", padding=2, fontsize=7)
+            ax.set_xticks(x)
+            ax.set_xticklabels(item_labels, rotation=25, ha="right")
+            ax.set_ylabel("Mean importance (1–5)")
+            ax.set_ylim(1, 5.8)
+            ax.set_title("Feature Importance by Respondent Segment")
+            ax.legend()
+            if suppressed_segs:
+                note = "Suppressed (n<5): " + ", ".join(s.replace("_", " ") for s in suppressed_segs)
+                ax.annotate(note, xy=(0.01, 0.01), xycoords="axes fraction",
+                            fontsize=8, color="#6B7280")
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            plt.tight_layout()
+            _save(fig, "feature_importance_by_segment.png")
+
+    # ── Q52: Pricing sensitivity ───────────────────────────────────────────
+    if "q52_price_sensitivity_id" in quant:
+        dist = quant["q52_price_sensitivity_id"].get("distribution", [])
+        n_pricing = quant["q52_price_sensitivity_id"].get("n", 0)
+        if dist:
+            order = ["very_sensitive", "somewhat_sensitive", "not_very_sensitive",
+                     "depends_who_pays", "not_sure"]
+            rows_ordered = sorted(dist, key=lambda r: order.index(r["value"])
+                                  if r["value"] in order else 99)
+            labels = [r["value"].replace("_", " ").title() for r in rows_ordered]
+            pcts = [r["pct"] for r in rows_ordered]
+            ns_vals = [r["n"] for r in rows_ordered]
+            fig, ax = plt.subplots(figsize=(9, 5))
+            bars = ax.barh(labels[::-1], pcts[::-1], color=PALETTE[3], edgecolor="white")
+            for bar, n_val, pct in zip(bars, ns_vals[::-1], pcts[::-1]):
+                ax.text(bar.get_width() + 0.5, bar.get_y() + bar.get_height() / 2,
+                        f"{pct:.0f}%  (n={n_val})", va="center", fontsize=9)
+            ax.set_xlabel("% of respondents who answered pricing questions")
+            ax.set_title(f"Price Sensitivity for Digital Tools (N={n_pricing})")
+            ax.set_xlim(0, 70)
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            note = f"Note: Only respondents who opted into pricing questions (N={n_pricing}) are shown."
+            ax.annotate(note, xy=(0.01, -0.12), xycoords="axes fraction", fontsize=8, color="#6B7280")
+            plt.tight_layout()
+            _save(fig, "pricing_sensitivity.png")
+
     # ── Q50: Adoption barriers pareto ─────────────────────────────────────
     if "q50_barriers_id" in quant:
         rows = quant["q50_barriers_id"]["frequency_table"][:12]
