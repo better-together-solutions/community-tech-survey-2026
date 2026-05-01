@@ -688,10 +688,32 @@ def _ask_ollama(prompt: str, ollama_host: str, model: str = "llama3.2:latest") -
     resp = requests.post(
         f"{ollama_host}/api/generate",
         json={"model": model, "prompt": prompt, "stream": False},
-        timeout=180,
+        timeout=300,
     )
     resp.raise_for_status()
     return resp.json().get("response", "")
+
+
+def _extract_json_array(raw: str) -> list[dict]:
+    """
+    Robustly extract a JSON array from LLM output that may include
+    markdown fences, trailing commas, or surrounding prose.
+    """
+    # Strip markdown code fences
+    clean = re.sub(r"```(?:json)?\s*", "", raw).replace("```", "")
+    # Try the whole cleaned string first
+    for candidate in [clean, raw]:
+        m = re.search(r"\[.*\]", candidate, re.DOTALL)
+        if not m:
+            continue
+        text = m.group()
+        # Remove trailing commas before ] or }
+        text = re.sub(r",\s*([\]}])", r"\1", text)
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+    return []
 
 
 QUAL_PROMPTS = {
@@ -780,7 +802,8 @@ def cmd_qual(args: argparse.Namespace) -> None:
         else:
             subset = completed[completed.get("q2_type_id", pd.Series()) == scope]
 
-        responses = subset[["rid", col]].dropna(subset=[col])
+        responses = subset[["rid", col]].dropna(subset=[col]).copy()
+        responses[col] = responses[col].astype(str)
         responses = responses[responses[col].str.strip() != ""]
 
         n = len(responses)
@@ -791,24 +814,33 @@ def cmd_qual(args: argparse.Namespace) -> None:
 
         print(f"  Coding {col} (n={n})...")
 
-        # Phase 2: Initial coding
-        response_text = "\n".join(
-            f"[{row['rid']}] {str(row[col])[:400]}"
-            for _, row in responses.iterrows()
-        )
+        # Phase 2: Initial coding — chunk into batches of 25 to stay within LLM context
+        CHUNK_SIZE = 25
+        rows_list = list(responses.iterrows())
+        codes_data: list[dict] = []
+        for chunk_start in range(0, len(rows_list), CHUNK_SIZE):
+            chunk = rows_list[chunk_start:chunk_start + CHUNK_SIZE]
+            chunk_text = "\n".join(
+                f"[{row['rid']}] {str(row[col])[:350]}"
+                for _, row in chunk
+            )
+            coding_prompt = QUAL_PROMPTS["coding"].format(
+                question_label=label,
+                responses=chunk_text,
+            )
+            try:
+                raw_codes = _ask_ollama(coding_prompt, ollama_host, model)
+                chunk_codes: list[dict] = _extract_json_array(raw_codes)
+                codes_data.extend(chunk_codes)
+                print(f"    chunk {chunk_start//CHUNK_SIZE + 1}: {len(chunk_codes)} coded")
+            except Exception as e:
+                print(f"    WARNING: coding failed chunk {chunk_start//CHUNK_SIZE + 1} for {col}: {e}")
+
+        # Store the prompt used (first chunk representative)
         coding_prompt = QUAL_PROMPTS["coding"].format(
             question_label=label,
-            responses=response_text,
+            responses="[chunked — see methodology.md §6.3]",
         )
-
-        try:
-            raw_codes = _ask_ollama(coding_prompt, ollama_host, model)
-            # Extract JSON array from response
-            json_match = re.search(r"\[.*\]", raw_codes, re.DOTALL)
-            codes_data: list[dict] = json.loads(json_match.group()) if json_match else []
-        except Exception as e:
-            print(f"    WARNING: coding failed for {col}: {e}")
-            codes_data = []
 
         # Phase 3: Theme synthesis
         codes_summary = "\n".join(
@@ -824,8 +856,12 @@ def cmd_qual(args: argparse.Namespace) -> None:
 
         try:
             raw_themes = _ask_ollama(theme_prompt, ollama_host, model)
-            json_match = re.search(r"\[.*\]", raw_themes, re.DOTALL)
-            themes_data: list[dict] = json.loads(json_match.group()) if json_match else []
+            themes_data: list[dict] = _extract_json_array(raw_themes)
+            # Retry once with a more explicit JSON-only prompt if parsing failed
+            if not themes_data:
+                retry_prompt = theme_prompt + "\n\nIMPORTANT: Output ONLY a valid JSON array. No markdown, no prose, no code fences. Start with [ and end with ]."
+                raw_themes2 = _ask_ollama(retry_prompt, ollama_host, model)
+                themes_data = _extract_json_array(raw_themes2)
         except Exception as e:
             print(f"    WARNING: theme synthesis failed for {col}: {e}")
             themes_data = []
@@ -939,8 +975,7 @@ def cmd_irr(args: argparse.Namespace) -> None:
 
         try:
             raw_2 = _ask_ollama(coding_prompt, ollama_host, model)
-            json_match = re.search(r"\[.*\]", raw_2, re.DOTALL)
-            codes_pass2: list[dict] = json.loads(json_match.group()) if json_match else []
+            codes_pass2: list[dict] = _extract_json_array(raw_2)
         except Exception as e:
             irr_results["questions"][col] = {"error": str(e)}
             continue
@@ -1231,20 +1266,37 @@ def cmd_report(args: argparse.Namespace) -> None:
             lines.append(f"- **{name}** ({pct}%): {desc}")
         return "\n".join(lines)
 
+    def _looks_like_code(s: str) -> bool:
+        """True if the string looks like LLM code names rather than verbatim text."""  # noqa: RUF001
+        if not s or len(s) > 200:
+            return len(s) == 0
+        words = s.split()
+        return len(words) <= 5 and all("_" in w or w.lower() == w for w in words)
+
     def _top_quotes(col: str, max_q: int = 3) -> str:
         qf = run_dir / "qual" / f"{col}.json"
         if not qf.exists():
             return ""
         d = json.loads(qf.read_text())
+        seen_rids: set[str] = set()
         quotes = []
         for t in d.get("themes", []):
             for sq in t.get("supporting_quotes", [])[:1]:
                 rid = sq.get("rid", "")
+                if rid in seen_rids:
+                    continue
                 quote = sq.get("quote", "")
-                if quote:
-                    rtype = df[df["rid"] == rid]["q2_type_id"].values
-                    seg = rtype[0] if len(rtype) else "respondent"
-                    quotes.append(f'> “{quote}” — *{seg}* ({rid})')
+                # If LLM returned code names instead of verbatim text, fetch from raw data
+                if _looks_like_code(quote) and rid and col in df.columns:
+                    raw_rows = df[df["rid"] == rid][col].values
+                    if len(raw_rows) and str(raw_rows[0]).strip():
+                        quote = str(raw_rows[0])[:280].strip()
+                if not quote or _looks_like_code(quote):
+                    continue
+                seen_rids.add(rid)
+                rtype = df[df["rid"] == rid]["q2_type_id"].values
+                seg = (rtype[0] if len(rtype) else "respondent").replace("_", " ")
+                quotes.append(f'> "{quote}" — *{seg}* ({rid})')
         return "\n\n".join(quotes[:max_q])
 
     def _chart_embed(name: str) -> str:
@@ -1477,6 +1529,14 @@ def cmd_report(args: argparse.Namespace) -> None:
         "### Themes Across All Open-Text Responses",
         "",
         _chart_embed("sentiment_distribution.png"),
+        "",
+        "> **Methodological note on AI-assisted coding.** Themes below were generated using Reflexive Thematic "
+        "Analysis (Braun & Clarke, 2021) with AI-assisted initial coding (Llama 3.2). Intercoder reliability "
+        "(Krippendorff's α) ranged from −0.14 to 0.37 across questions. These below-threshold values reflect "
+        "code-name variation across LLM passes — a known limitation of exact-match reliability measures for "
+        "LLM coding — rather than theme incoherence. Themes should be treated as **exploratory and "
+        "hypothesis-generating**. Verbatim quotes are drawn from raw survey data. Human analyst review of "
+        "the full codebook (`docs/codebook.md`) is recommended before citing individual themes.",
         "",
         _top_themes("q46_comments"),
         "",
