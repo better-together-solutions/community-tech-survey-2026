@@ -10,7 +10,7 @@ This document describes the privacy measures applied to the community technology
 
 **Data Controller:** Better Together Solutions (BTS)
 **Contact:** rob@bettertogethersolutions.com
-**Data Protection Officer:** Rob Currie, Director
+**Data Protection Officer:** Robert Smith, Director
 
 ---
 
