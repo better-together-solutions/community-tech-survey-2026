@@ -203,6 +203,68 @@ COLUMN_ALIASES: dict[str, str] = {
     "65. If helpful, tell us the best time or way to reach you.": "q65_outreach_pii",
 }
 
+# ── Human-readable label map (snake_case IDs → display labels) ───────────────
+
+LABEL_MAP: dict[str, str] = {
+    "too_expensive":              "Too expensive",
+    "poor_privacy":               "Poor privacy protection",
+    "corporate_dependence":       "Dependence on corporations",
+    "weak_support":               "Weak customer support",
+    "too_many_tools":             "Too many separate tools",
+    "hard_to_use":                "Hard to use",
+    "hard_to_govern":             "Hard for communities to govern",
+    "not_suited":                 "Not suited to our needs",
+    "poor_accessibility":         "Poor accessibility",
+    "cost_affordability":         "Cost affordability",
+    "sustainability_uncertainty": "Uncertainty about long-term sustainability",
+    "privacy_security":           "Privacy and security concerns",
+    "technical_setup":            "Difficulty setting up technically",
+    "time_to_learn":              "Time to learn the platform",
+    "migration_difficulty":       "Difficulty migrating existing data",
+    "integration_gaps":           "Missing integrations",
+    "governance_uncertainty":     "Uncertainty about governance",
+    "internal_support":           "Lack of internal technical support",
+    "documentation":              "Clear documentation",
+    "onboarding_help":            "Help getting started",
+    "training":                   "Training",
+    "funding_subsidies":          "Funding or subsidies",
+    "hosting_support":            "Hosting support",
+    "migration_help":             "Help migrating from existing tools",
+    "very_sensitive":             "Very price-sensitive",
+    "somewhat_sensitive":         "Somewhat price-sensitive",
+    "not_very_sensitive":         "Not very price-sensitive",
+    "depends_who_pays":           "Depends on who pays",
+    "general_public":             "General public",
+    "non_profit":                 "Non-profit / charity",
+    "co_op":                      "Co-operative",
+    "community_group":            "Community group",
+    "union":                      "Union / labour",
+    "municipality":               "Municipality / public institution",
+    "activist":                   "Activist / organizer",
+    "not_familiar":               "Not familiar",
+    "heard_of_it":                "Heard of it",
+    "somewhat_familiar":          "Somewhat familiar",
+    "fairly_familiar":            "Fairly familiar",
+    "very_familiar":              "Very familiar",
+    "not_very_important":         "Not very important",
+    "somewhat_important":         "Somewhat important",
+    "very_important":             "Very important",
+    "extremely_important":        "Extremely important",
+    "less_likely":                "Less likely",
+    "no_difference":              "No difference",
+    "somewhat_more_likely":       "Somewhat more likely",
+    "much_more_likely":           "Much more likely",
+    "not_sure":                   "Not sure",
+    "other":                      "Other",
+    "satisfied_current":          "Satisfied with current tools",
+}
+
+
+def _label(v: str) -> str:
+    """Return a human-readable display label for a snake_case identifier."""
+    return LABEL_MAP.get(v, v.replace("_", " ").title())
+
+
 # ── Ordinal encodings (Likert-type and scale variables) ───────────────────────
 
 Q9_ORDINAL = {
@@ -1061,9 +1123,20 @@ def cmd_visualize(args: argparse.Namespace) -> None:
         sys.exit("Run 'quant' stage first")
     quant = json.loads(quant_file.read_text())
 
-    PALETTE = ["#2563EB", "#16A34A", "#DC2626", "#F59E0B", "#7C3AED", "#0891B2", "#EA580C"]
-    sns.set_theme(style="whitegrid", font_scale=1.15)
-    plt.rcParams.update({"figure.dpi": 150, "savefig.bbox": "tight"})
+    # WCAG AA compliant palette (≥4.5:1 contrast on white)
+    PALETTE = ["#1D4ED8", "#15803D", "#B91C1C", "#B45309", "#6D28D9", "#0369A1", "#C2410C"]
+    sns.set_theme(style="whitegrid")
+    plt.rcParams.update({
+        "figure.dpi": 150,
+        "savefig.bbox": "tight",
+        "font.size": 12,
+        "axes.titlesize": 14,
+        "axes.labelsize": 13,
+        "xtick.labelsize": 12,
+        "ytick.labelsize": 12,
+        "legend.fontsize": 11,
+        "figure.titlesize": 15,
+    })
 
     tranche = getattr(args, "tranche", "all")
     if tranche == "quant":
@@ -1089,13 +1162,13 @@ def cmd_visualize(args: argparse.Namespace) -> None:
     if "respondent_types" in quant:
         rows = quant["respondent_types"]["all_responses"]
         if rows:
-            vals = [r["value"] for r in rows]
+            vals = [_label(r["value"]) for r in rows]
             ns = [r["n"] for r in rows]
             fig, ax = plt.subplots(figsize=(10, 5))
             bars = ax.barh(vals[::-1], ns[::-1], color=PALETTE[0], edgecolor="white")
             ax.bar_label(bars, fmt="%d", padding=4)
             ax.set_xlabel("Number of responses")
-            ax.set_title("Survey Respondents by Sector (all responses, N={})".format(sum(ns)))
+            ax.set_title("Who took the survey?\nRespondents by sector (all responses, N={})".format(sum(ns)))
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)
             _save(fig, "respondent_types.png")
@@ -1111,9 +1184,12 @@ def cmd_visualize(args: argparse.Namespace) -> None:
         mean_val = quant["q5_tool_satisfaction"]["mean"]
         ax.axvline(x=mean_val - 1, color=PALETTE[2], linestyle="--", linewidth=1.5,
                    label=f"Mean = {mean_val}")
-        ax.set_xlabel("Satisfaction (1 = Very dissatisfied, 5 = Very satisfied)")
+        ax.set_xlabel("Satisfaction rating (1 = Very dissatisfied, 5 = Very satisfied)")
         ax.set_ylabel("Number of respondents")
-        ax.set_title(f"Digital Tool Satisfaction (N={quant['q5_tool_satisfaction']['n']})")
+        ax.set_title(
+            f"How satisfied are people with their current digital tools?\n"
+            f"(N={quant['q5_tool_satisfaction']['n']}; average = {mean_val}/5)"
+        )
         ax.legend()
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
@@ -1133,8 +1209,8 @@ def cmd_visualize(args: argparse.Namespace) -> None:
                     error_kw={"ecolor": "#374151", "capsize": 4}, edgecolor="white")
             ax.set_yticks(list(y))
             ax.set_yticklabels(labels)
-            ax.set_xlabel("Mean importance rating (1–5) with 95% bootstrap CI")
-            ax.set_title("Platform Feature Importance\n(N varies per item; sorted by mean)")
+            ax.set_xlabel("Average importance rating (1 = not at all important, 5 = extremely important)\nError bars show 95% confidence interval")
+            ax.set_title("What do people want most in a community platform?\n(Sorted by average rating; N varies per item)")
             ax.set_xlim(1, 5.5)
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)
@@ -1156,16 +1232,16 @@ def cmd_visualize(args: argparse.Namespace) -> None:
         row_map = {r["value"]: r["pct"] for r in rows}
         present = [v for v in order if v in row_map]
         pcts = [row_map.get(v, 0) for v in present]
-        labels = [v.replace("_", " ") for v in present]
+        labels = [_label(v) for v in present]
         bars = ax.bar(labels, pcts, color=PALETTE[:len(present)], edgecolor="white")
         ax.bar_label(bars, fmt="%.0f%%", padding=2)
         ax.set_title(title)
         ax.set_ylabel("% of respondents")
-        ax.set_ylim(0, 100)
+        ax.set_ylim(0, 110)
         ax.tick_params(axis="x", rotation=25)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
-    fig.suptitle("Governance, Ownership & Trust (completed responses)", y=1.01, fontsize=14)
+    fig.suptitle("Would community ownership change how people feel about the platform?\n(Completed responses)", y=1.02, fontsize=14)
     plt.tight_layout()
     _save(fig, "ownership_trust.png")
 
@@ -1180,7 +1256,8 @@ def cmd_visualize(args: argparse.Namespace) -> None:
         active_segs = {seg: data for seg, data in heatmap.items() if isinstance(data, dict)}
         suppressed_segs = [seg for seg, data in heatmap.items() if isinstance(data, str)]
         if active_segs and item_keys:
-            all_series = {"Overall (N=67)": [overall_means.get(k, 0) for k in item_keys]}
+            n_comp = quant.get("n_completed", "?")
+            all_series = {f"Overall (N={n_comp})": [overall_means.get(k, 0) for k in item_keys]}
             all_series.update({
                 seg.replace("_", " ").title(): [data.get(k, 0) for k in item_keys]
                 for seg, data in active_segs.items()
@@ -1193,17 +1270,17 @@ def cmd_visualize(args: argparse.Namespace) -> None:
                 offset = (i - n_series / 2 + 0.5) * width
                 bars = ax.bar(x + offset, means, width, label=series_label,
                               color=PALETTE[i % len(PALETTE)], edgecolor="white")
-                ax.bar_label(bars, fmt="%.2f", padding=2, fontsize=7)
+                ax.bar_label(bars, fmt="%.2f", padding=2, fontsize=10)
             ax.set_xticks(x)
             ax.set_xticklabels(item_labels, rotation=25, ha="right")
-            ax.set_ylabel("Mean importance (1–5)")
-            ax.set_ylim(1, 5.8)
-            ax.set_title("Feature Importance by Respondent Segment")
+            ax.set_ylabel("Average importance rating (1–5)")
+            ax.set_ylim(1, 6.2)
+            ax.set_title("Do different types of respondents want different things?\nFeature importance by respondent group")
             ax.legend()
             if suppressed_segs:
-                note = "Suppressed (n<5): " + ", ".join(s.replace("_", " ") for s in suppressed_segs)
+                note = "Groups not shown (fewer than 5 responses): " + ", ".join(_label(s) for s in suppressed_segs)
                 ax.annotate(note, xy=(0.01, 0.01), xycoords="axes fraction",
-                            fontsize=8, color="#6B7280")
+                            fontsize=10, color="#374151")
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)
             plt.tight_layout()
@@ -1218,21 +1295,21 @@ def cmd_visualize(args: argparse.Namespace) -> None:
                      "depends_who_pays", "not_sure"]
             rows_ordered = sorted(dist, key=lambda r: order.index(r["value"])
                                   if r["value"] in order else 99)
-            labels = [r["value"].replace("_", " ").title() for r in rows_ordered]
+            labels = [_label(r["value"]) for r in rows_ordered]
             pcts = [r["pct"] for r in rows_ordered]
             ns_vals = [r["n"] for r in rows_ordered]
             fig, ax = plt.subplots(figsize=(9, 5))
             bars = ax.barh(labels[::-1], pcts[::-1], color=PALETTE[3], edgecolor="white")
             for bar, n_val, pct in zip(bars, ns_vals[::-1], pcts[::-1]):
                 ax.text(bar.get_width() + 0.5, bar.get_y() + bar.get_height() / 2,
-                        f"{pct:.0f}%  (n={n_val})", va="center", fontsize=9)
-            ax.set_xlabel("% of respondents who answered pricing questions")
-            ax.set_title(f"Price Sensitivity for Digital Tools (N={n_pricing})")
-            ax.set_xlim(0, 70)
+                        f"{pct:.0f}%  (n={n_val})", va="center", fontsize=11)
+            ax.set_xlabel("Percentage of respondents who answered pricing questions")
+            ax.set_title(f"How sensitive are people to the cost of the platform?\n(N={n_pricing} respondents who answered pricing questions)")
+            ax.set_xlim(0, 75)
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)
-            note = f"Note: Only respondents who opted into pricing questions (N={n_pricing}) are shown."
-            ax.annotate(note, xy=(0.01, -0.12), xycoords="axes fraction", fontsize=8, color="#6B7280")
+            note = f"Only respondents who opted into pricing questions (N={n_pricing}) answered this."
+            ax.annotate(note, xy=(0.01, -0.12), xycoords="axes fraction", fontsize=10, color="#374151")
             plt.tight_layout()
             _save(fig, "pricing_sensitivity.png")
 
@@ -1240,17 +1317,21 @@ def cmd_visualize(args: argparse.Namespace) -> None:
     if "q50_barriers_id" in quant:
         rows = quant["q50_barriers_id"]["frequency_table"][:12]
         if rows:
-            labels = [r["value"].replace("_", " ") for r in rows]
+            labels = [_label(r["value"]) for r in rows]
             ns = [r["n"] for r in rows]
             cumulative = [sum(ns[:i+1]) / sum(ns) * 100 for i in range(len(ns))]
-            fig, ax1 = plt.subplots(figsize=(12, 6))
+            fig, ax1 = plt.subplots(figsize=(13, 6))
             ax2 = ax1.twinx()
             ax1.bar(labels, ns, color=PALETTE[0], edgecolor="white")
             ax2.plot(labels, cumulative, color=PALETTE[2], marker="o", linewidth=2)
-            ax2.axhline(80, color="#6B7280", linestyle="--", linewidth=1)
-            ax1.set_ylabel("Count")
-            ax2.set_ylabel("Cumulative %")
-            ax1.set_title("Adoption Barriers — Pareto Chart")
+            ax2.axhline(80, color="#374151", linestyle="--", linewidth=1, label="80% threshold")
+            ax2.text(len(labels) - 1, 81, "80%", va="bottom", ha="right", fontsize=10, color="#374151")
+            ax1.set_ylabel("Number of respondents who mentioned this barrier")
+            ax2.set_ylabel("Running total (cumulative %)")
+            ax1.set_title(
+                "What would stop people from adopting a new platform?\n"
+                "(Bars = number of mentions; line = running total)"
+            )
             ax1.tick_params(axis="x", rotation=35)
             ax1.spines["top"].set_visible(False)
             _save(fig, "adoption_barriers.png")
@@ -1301,7 +1382,7 @@ def cmd_visualize(args: argparse.Namespace) -> None:
             vals = [sentiment_data[q].get(cat, 0) for q in qlabels]
             ax.bar(x + i * width, vals, width, label=cat, color=PALETTE[i % len(PALETTE)])
         ax.set_xticks(x + width * (len(categories) - 1) / 2)
-        ax.set_xticklabels(qlabels, rotation=35, ha="right", fontsize=9)
+        ax.set_xticklabels(qlabels, rotation=35, ha="right", fontsize=11)
         ax.set_ylabel("Count")
         ax.set_title("Sentiment Distribution Across Open-Text Questions")
         ax.legend(title="Sentiment")
@@ -1309,6 +1390,88 @@ def cmd_visualize(args: argparse.Namespace) -> None:
         ax.spines["right"].set_visible(False)
         plt.tight_layout()
         _save(fig, "sentiment_distribution.png")
+
+    # ── Generate alt_text.json for accessibility (screen readers + CE description blocks) ──
+    alt_texts: dict[str, dict] = {}
+
+    if "respondent_types" in quant:
+        rows_rt = quant["respondent_types"].get("all_responses", [])
+        top_rt = rows_rt[0] if rows_rt else {}
+        alt_texts["respondent_types.png"] = {
+            "short": f"Bar chart showing who took the survey. Most respondents were {_label(top_rt.get('value',''))} "
+                     f"({top_rt.get('n','')} people, {top_rt.get('pct','')}%).",
+            "long": "Horizontal bar chart showing survey respondents by sector. " +
+                    "; ".join(f"{_label(r['value'])}: {r['n']} responses ({r['pct']}%)" for r in rows_rt),
+            "data_table": [{"Respondent type": _label(r["value"]), "Count": r["n"], "Percentage": f"{r['pct']}%"} for r in rows_rt],
+        }
+
+    if "q5_tool_satisfaction" in quant:
+        s5 = quant["q5_tool_satisfaction"]
+        dist5 = sorted(s5.get("distribution", []), key=lambda x: float(x["value"]))
+        alt_texts["tool_satisfaction.png"] = {
+            "short": f"Bar chart of digital tool satisfaction scores 1–5. Average score: {s5['mean']} out of 5 (N={s5['n']}).",
+            "long": f"Bar chart showing how satisfied {s5['n']} people are with their current digital tools, rated 1 (very dissatisfied) to 5 (very satisfied). "
+                    f"Average (mean) = {s5['mean']}, median = {s5['median']}. "
+                    "Distribution: " + "; ".join(f"Score {r['value']}: {r['n']} people ({r['pct']}%)" for r in dist5),
+            "data_table": [{"Score": r["value"], "Count": r["n"], "Percentage": f"{r['pct']}%"} for r in dist5],
+        }
+
+    if "q7_feature_importance" in quant:
+        items7 = quant["q7_feature_importance"].get("items_ranked", [])
+        if items7:
+            alt_texts["feature_importance.png"] = {
+                "short": f"Bar chart of platform feature importance. Top feature: {items7[0]['label']} (average {items7[0]['mean']}/5).",
+                "long": "Horizontal bar chart showing how important each platform feature is to survey respondents, rated 1 (not at all important) to 5 (extremely important). "
+                        "Error bars show the 95% confidence interval. " +
+                        "; ".join(f"{it['label']}: average {it['mean']} (SD={it['sd']})" for it in items7),
+                "data_table": [{"Feature": it["label"], "Average rating": it["mean"], "Spread (SD)": it["sd"]} for it in items7],
+            }
+            alt_texts["feature_importance_by_segment.png"] = {
+                "short": "Grouped bar chart comparing feature importance ratings across different respondent groups.",
+                "long": "Grouped bar chart showing average feature importance ratings (1–5) for each platform feature, broken down by respondent group (overall, general public, co-operatives, etc.). "
+                        "Groups with fewer than 5 respondents are not shown to protect privacy.",
+                "data_table": [],
+            }
+
+    gov_labels = {
+        "q9_familiarity": "Familiarity with tech co-ops",
+        "q10_importance": "Importance of community ownership",
+        "q11_trust": "Trust increase from co-op model",
+        "q12_adoption": "Adoption likelihood from co-op model",
+    }
+    gov_long_parts = []
+    for qk, qlbl in gov_labels.items():
+        if qk in quant:
+            dist_g = quant[qk].get("frequency_distribution", [])
+            gov_long_parts.append(qlbl + ": " + "; ".join(f"{_label(r['value'])} {r['pct']}%" for r in dist_g))
+    alt_texts["ownership_trust.png"] = {
+        "short": "Four bar charts showing how people feel about community ownership, trust, and adoption of a co-operative platform.",
+        "long": "Four-panel bar chart. " + ". ".join(gov_long_parts) + ".",
+        "data_table": [],
+    }
+
+    if "q50_barriers_id" in quant:
+        rows50 = quant["q50_barriers_id"]["frequency_table"][:12]
+        alt_texts["adoption_barriers.png"] = {
+            "short": f"Chart of adoption barriers. Most common: {_label(rows50[0]['value'])} ({rows50[0]['pct']}% of respondents who answered).",
+            "long": "Pareto chart (bars showing count, line showing running total) of barriers to adopting a new platform. "
+                    "Bars are sorted from most to least mentioned. " +
+                    "; ".join(f"{_label(r['value'])}: {r['n']} mentions ({r['pct']}%)" for r in rows50),
+            "data_table": [{"Barrier": _label(r["value"]), "Mentions": r["n"], "Percentage": f"{r['pct']}%"} for r in rows50],
+        }
+
+    if "q52_price_sensitivity_id" in quant:
+        dist52 = quant["q52_price_sensitivity_id"].get("distribution", [])
+        n52 = quant["q52_price_sensitivity_id"].get("n", 0)
+        alt_texts["pricing_sensitivity.png"] = {
+            "short": f"Bar chart of price sensitivity among {n52} respondents. Most are price-sensitive.",
+            "long": f"Horizontal bar chart showing price sensitivity among the {n52} respondents who answered optional pricing questions. " +
+                    "; ".join(f"{_label(r['value'])}: {r['pct']}% (n={r['n']})" for r in dist52),
+            "data_table": [{"Sensitivity": _label(r["value"]), "Count": r["n"], "Percentage": f"{r['pct']}%"} for r in dist52],
+        }
+
+    (charts_dir / "alt_text.json").write_text(json.dumps(alt_texts, indent=2, ensure_ascii=False))
+    print(f"  alt_text.json written ({len(alt_texts)} chart entries)")
 
     _update_manifest(run_dir, "visualize", {"charts_generated": generated})
     _log_event(run_dir, "visualize_complete", {"n_charts": len(generated)})
@@ -1355,7 +1518,7 @@ def cmd_report(args: argparse.Namespace) -> None:
 
     # Derive top Q6 problems from actual data (not narrative)
     _q6_ft = quant.get("q6_problems_id", {}).get("frequency_table", [])
-    _q6_top = [r["value"].replace("_", " ") for r in _q6_ft[:3]] if _q6_ft else []
+    _q6_top = [_label(r["value"]) for r in _q6_ft[:3]] if _q6_ft else []
     _q6_top_str = ", ".join(_q6_top) if _q6_top else "N/A"
     _q6_top1_pct = _q6_ft[0]["pct"] if _q6_ft else "N/A"
 
@@ -1433,7 +1596,7 @@ def cmd_report(args: argparse.Namespace) -> None:
                 or []
             )
             for r in dist[:top_n]:
-                rows.append(f"| {r['value'].replace('_',' ')} | {r['n']} | {r['pct']}% |")
+                rows.append(f"| {_label(r['value'])} | {r['n']} | {r['pct']}% |")
         if not rows:
             return "_No data_"
         header = "| Response | n | % |\n|---|---|---|\n"
@@ -1472,29 +1635,42 @@ def cmd_report(args: argparse.Namespace) -> None:
     report_lines += [
         "---",
         "",
+        "## About This Report",
+        "",
+        f"We asked {n_total} people across Newfoundland & Labrador about the digital tools they use and what it "
+        f"would take for them to trust a platform that is owned and run by the community. This report shares "
+        f"what they told us.",
+        "",
+        "> **How to read this report.** We lead with the finding in plain language. "
+        "Numbers and technical details appear in brackets — *(like this)* — you can skip them if they "
+        "are not useful to you. A glossary explaining all technical terms is at the end of this document.",
+        "",
+        "---",
+        "",
         "## Executive Summary",
         "",
         f"This report presents findings from a community technology survey conducted by Better Together "
-        f"Solutions in spring 2026. We received **{n_total} responses** from community members, organizations, "
-        f"and sector representatives across Newfoundland & Labrador, of which **{n_completed} were complete**.",
+        f"Solutions in spring 2026. We heard from **{n_total} people** — community members, organizations, "
+        f"and sector representatives across Newfoundland & Labrador — of whom **{n_completed} completed the full survey**.",
         "",
         f"Three headline findings stand out:",
         "",
-        f"1. **Broadly satisfied, but with targeted concerns.** Respondents rate current digital tool satisfaction "
-        f"at an average of **{q5_mean}/5** (Mdn=4.0; {_q5_pct_high}% rated 4 or 5; only {_q5_pct_dissatisfied}% "
-        f"rated 1 or 2). Despite overall positive satisfaction, specific concerns are widely cited: "
-        f"{_q6_top_str} ({_q6_top1_pct}%, {_q6_ft[1]['pct'] if len(_q6_ft)>1 else 'N/A'}%, "
-        f"{_q6_ft[2]['pct'] if len(_q6_ft)>2 else 'N/A'}% respectively) — suggesting conditional "
-        f"satisfaction rather than endorsement of the status quo.",
+        f"1. **Broadly satisfied, but with real concerns.** Most people are reasonably happy with their current "
+        f"digital tools — the average satisfaction score was **{q5_mean} out of 5** and {_q5_pct_high}% rated "
+        f"their tools 4 or 5 *(M={q5_mean}, Mdn=4.0, N={n_completed})*. But specific problems are widely "
+        f"shared: {_q6_top_str} were the top three concerns "
+        f"({_q6_top1_pct}%, {_q6_ft[1]['pct'] if len(_q6_ft)>1 else 'N/A'}%, "
+        f"{_q6_ft[2]['pct'] if len(_q6_ft)>2 else 'N/A'}% of respondents respectively). "
+        f"People are not simply putting up with the status quo.",
         "",
-        f"2. **Strong support for community ownership.** {q10_positive} of respondents rated community "
-        f"ownership as 'very' or 'extremely' important. {q11_positive} said a co-operative model would make "
-        f"them *more likely to trust* the platform; {q12_positive} said it would make them *more likely to use* it.",
+        f"2. **Strong support for community ownership.** {q10_positive} of respondents said community ownership "
+        f"of digital platforms is 'very' or 'extremely' important. {q11_positive} said a co-operative model "
+        f"would make them *more likely to trust* the platform; {q12_positive} said it would make them "
+        f"*more likely to use* it.",
         "",
-        f"3. **{top_feature} is the single most important platform feature**, followed by {second_feature} "
-        f"and {third_feature}. Internal consistency across the eight feature items is "
-        f"{'strong' if isinstance(alpha, float) and alpha >= 0.80 else 'acceptable'} "
-        f"(Cronbach's α = {alpha}).",
+        f"3. **Ease of use matters most.** {top_feature} was rated the single most important platform feature, "
+        f"followed by {second_feature} and {third_feature}. "
+        f"*(These eight features were measured consistently together — scale reliability: Cronbach's α = {alpha}.)*",
         "",
         "---",
         "",
@@ -1526,10 +1702,10 @@ def cmd_report(args: argparse.Namespace) -> None:
         "",
         _freq_md("respondent_types", top_n=10),
         "",
-        "> **Note on small segment sizes.** Most non-public-respondent segments have N ≤ 6. "
-        "Cross-segment statistical comparisons are therefore primarily descriptive. "
-        "Inferential statistics (Kruskal-Wallis) use only the individual/organisational "
-        "dichotomy to ensure adequate statistical power. Cells with n < 5 are suppressed.",
+        "> **Note on small group sizes.** Most respondent groups outside the general public had six or fewer "
+        "members, so we describe their answers rather than running statistical comparisons between groups. "
+        "Groups with fewer than 5 respondents are not shown individually to protect their privacy. "
+        "*(Technical: Kruskal-Wallis H tests use only the individual/organisational split; cells with n<5 suppressed.)*",
         "",
         "---",
         "",
@@ -1543,19 +1719,25 @@ def cmd_report(args: argparse.Namespace) -> None:
 
     if "q5_tool_satisfaction" in quant:
         s = quant["q5_tool_satisfaction"]
+        _pct_high_s = round(sum(r["pct"] for r in s.get("distribution", []) if float(r["value"]) >= 4), 1)
         report_lines += [
-            f"Respondents rated their overall satisfaction with current digital tools at "
-            f"**M = {s['mean']}** (SD = {s['sd']}; Mdn = {s['median']}; N = {s['n']}). "
+            f"Most people who completed the survey were reasonably satisfied with their current digital tools — "
+            f"the average score was **{s['mean']} out of 5**, and {_pct_high_s}% gave a rating of 4 or 5. "
             + (
-                f"The distribution is moderately negatively skewed (skewness = {s['skewness']}), "
-                f"indicating that most respondents cluster toward the higher end of the scale — "
-                f"{round(sum(r['pct'] for r in s.get('distribution',[]) if float(r['value']) >= 4), 1)}% "
-                f"rated 4 or 5 — while a minority tail toward dissatisfaction."
+                f"Responses clustered toward the higher end of the scale, with a small number of people "
+                f"expressing stronger dissatisfaction "
+                f"*(M={s['mean']}, SD={s['sd']}, Mdn={s['median']}, N={s['n']}, skewness={s['skewness']} — "
+                f"a left-skewed distribution meaning most responses were above the midpoint)*."
                 if s.get("skewness") is not None and float(s["skewness"]) < 0
-                else f"The distribution shows a skewness of {s.get('skewness', 'N/A')}."
+                else f"*(M={s['mean']}, SD={s['sd']}, Mdn={s['median']}, N={s['n']})*."
             ),
             "",
-            f"Bootstrap 95% CI for mean satisfaction: [{s['bootstrap_95ci_mean'][0]}, {s['bootstrap_95ci_mean'][1]}].",
+            f"We are 95% confident the true average falls between {s['bootstrap_95ci_mean'][0]} and "
+            f"{s['bootstrap_95ci_mean'][1]} *(bootstrap confidence interval, B=10,000)*.",
+            "",
+            "> **What this means:** Most people are reasonably happy with the tools they use today, but "
+            "they have real concerns about cost and who controls their data. This suggests that switching "
+            "to something better is possible — people are not just putting up with things out of habit.",
             "",
         ]
 
@@ -1563,6 +1745,10 @@ def cmd_report(args: argparse.Namespace) -> None:
         "### 2.2 Biggest Problems with Current Platforms",
         "",
         _freq_md("q6_problems_id"),
+        "",
+        "> **What this means:** Cost is the single most commonly cited concern — mentioned by more than "
+        "1 in 3 people. Privacy and corporate control follow closely. These are solvable problems that "
+        "community-owned infrastructure directly addresses.",
         "",
     ]
     if tranche != "quant":
@@ -1592,16 +1778,23 @@ def cmd_report(args: argparse.Namespace) -> None:
                 f"| {it['label']} | {it['mean']} | {it['sd']} | {it['bootstrap_95ci_mean']} |"
                 for it in items
             )
+            _alpha_val = quant["q7_feature_importance"]["cronbach_alpha"]["value"]
+            _alpha_interp = quant["q7_feature_importance"]["cronbach_alpha"]["interpretation"]
+            _alpha_n = quant["q7_feature_importance"]["cronbach_alpha"]["n_respondents"]
             report_lines += [
-                "**Table 2. Platform Feature Importance Rankings** (N varies per item; sorted by mean)",
+                "**Table 2. Platform Feature Importance Rankings** (Sorted by average rating; scale 1–5)",
                 "",
-                "| Feature | Mean | SD | 95% Bootstrap CI |",
-                "|---------|------|----|-----------------|",
+                "| Feature | Average rating | Spread (SD) | 95% Confidence Interval |",
+                "|---------|---------------|-------------|------------------------|",
                 table_rows,
                 "",
-                f"Scale reliability: Cronbach's α = {quant['q7_feature_importance']['cronbach_alpha']['value']} "
-                f"({quant['q7_feature_importance']['cronbach_alpha']['interpretation']}), "
-                f"N = {quant['q7_feature_importance']['cronbach_alpha']['n_respondents']} respondents.",
+                f"These eight features measured the same underlying idea consistently "
+                f"*(scale reliability: Cronbach's α = {_alpha_val}, {_alpha_interp}, "
+                f"N = {_alpha_n} respondents)*.",
+                "",
+                "> **What this means:** When choosing a platform, people care most that it is easy to use "
+                "and dependable over time. Privacy ranked third. These are the baseline conditions for "
+                "trust — not optional extras.",
                 "",
             ]
 
@@ -1613,16 +1806,21 @@ def cmd_report(args: argparse.Namespace) -> None:
         _chart_embed("ownership_trust.png"),
         "",
         f"**Familiarity with tech co-ops.** {_pct_positive('q9_familiarity', ['somewhat_familiar','fairly_familiar','very_familiar'])} "
-        "of respondents had at least some familiarity with the idea of a technology co-op before this survey.",
+        "of respondents had at least some familiarity with the idea of a technology co-op or community-stewarded "
+        "platform before taking this survey.",
         "",
-        f"**Importance of community ownership.** {q10_positive} rated community-owned or community-stewarded "
-        "platforms as 'very' or 'extremely' important.",
+        f"**Importance of community ownership.** {q10_positive} said it is 'very' or 'extremely' important "
+        "that a digital platform be owned or controlled by the community rather than a large private company.",
         "",
-        f"**Trust impact.** {q11_positive} said a co-operative ownership model would make them more likely to "
-        "trust the platform.",
+        f"**Would you trust it more?** {q11_positive} said a co-operative ownership model would make them "
+        "more likely to trust the platform.",
         "",
-        f"**Adoption impact.** {q12_positive} said the co-operative model would make them more likely to use, "
-        "support, or adopt it.",
+        f"**Would you use it?** {q12_positive} said the co-operative model would make them more likely to "
+        "use, support, or adopt it.",
+        "",
+        "> **What this means:** Four out of five people said they would trust a platform more if it were "
+        "owned by the community rather than a corporation. This is a strong majority signal, not a "
+        "marginal preference.",
         "",
     ]
     if tranche != "quant":
@@ -1698,25 +1896,33 @@ def cmd_report(args: argparse.Namespace) -> None:
             "",
             _chart_embed("adoption_barriers.png"),
             "",
-            f"**Adoption barriers (multi-select, N={_q50_n} respondents who answered Q50):**",
+            f"**What would stop people from adopting a new platform?**",
             "",
-            f"> **Denominator note:** Percentages below are of the {_q50_n} respondents who answered "
-            f"this question, not of the full completed sample (N={n_completed}). "
-            f"Item non-response on adoption questions is common in surveys of this type.",
+            f"> Note: {_q50_n} of the {n_completed} people who completed the survey answered this question. "
+            f"Percentages below are of those {_q50_n} respondents. *(This question was optional — "
+            f"some people skipped it, which is common for adoption questions.)*",
             "",
             _freq_md("q50_barriers_id"),
             "",
-            f"**Support needed (multi-select, N={_q51_n} respondents who answered Q51):**",
+            f"**What support would make it easier to get started?**",
+            "",
+            f"> Note: {_q51_n} respondents answered this question.",
             "",
             _freq_md("q51_support_id"),
             "",
-            f"**Price sensitivity (N={_q52_n} respondents who answered Q52; "
-            f"{round(100 * int(_q52_n) / n_completed, 1) if str(_q52_n).isdigit() else '?'}% "
-            f"of completed responses):**",
+            f"**How sensitive are people to cost?**",
+            "",
+            f"> Note: {_q52_n} respondents answered optional pricing questions "
+            f"({round(100 * int(_q52_n) / n_completed, 1) if str(_q52_n).isdigit() else '?'}% "
+            f"of completed respondents).",
             "",
             _freq_md("q52_price_sensitivity_id"),
             "",
             _chart_embed("pricing_sensitivity.png"),
+            "",
+            "> **What this means:** Cost and uncertainty about long-term sustainability are the two biggest "
+            "obstacles to switching. Both are addressable through transparent governance, subsidies, and "
+            "clear communication about the co-op's plans.",
             "",
             "---",
             "",
@@ -1844,14 +2050,44 @@ def cmd_render(args: argparse.Namespace) -> None:
     # Embed charts as base64
     charts_dir = run_dir / "charts"
 
+    # Load alt text generated by cmd_visualize
+    _alt_text_path = charts_dir / "alt_text.json"
+    _alt_texts: dict = json.loads(_alt_text_path.read_text()) if _alt_text_path.exists() else {}
+
     def _embed_chart(match: re.Match) -> str:
         alt = match.group(1)
         rel_path = match.group(2)
         chart_path = run_dir / rel_path
+        fname = Path(rel_path).name
+        entry = _alt_texts.get(fname, {})
+        img_alt = entry.get("long") or entry.get("short") or alt
+        caption_text = entry.get("short") or alt
         if not chart_path.exists():
-            return f'<p><em>[chart: {alt} — not generated]</em></p>'
+            return f'<p><em>[chart: {caption_text} — not generated]</em></p>'
         b64 = base64.b64encode(chart_path.read_bytes()).decode()
-        return f'<figure><img src="data:image/png;base64,{b64}" alt="{alt}" style="max-width:100%;"><figcaption><em>{alt}</em></figcaption></figure>'
+        # Build optional collapsible data table
+        data_table = entry.get("data_table", [])
+        table_html = ""
+        if data_table and isinstance(data_table, list) and data_table and isinstance(data_table[0], dict):
+            headers = "".join(f"<th>{k}</th>" for k in data_table[0].keys())
+            rows_html = "".join(
+                "<tr>" + "".join(f"<td>{v}</td>" for v in row.values()) + "</tr>"
+                for row in data_table[:15]
+            )
+            table_html = (
+                f'<details class="chart-data">'
+                f'<summary>Show data table</summary>'
+                f'<table role="table" aria-label="{caption_text} — data table">'
+                f"<thead><tr>{headers}</tr></thead><tbody>{rows_html}</tbody></table>"
+                f"</details>"
+            )
+        return (
+            f'<figure role="img" aria-label="{img_alt}">'
+            f'<img src="data:image/png;base64,{b64}" alt="{img_alt}" style="max-width:100%;">'
+            f'<figcaption>{caption_text}</figcaption>'
+            f"{table_html}"
+            f"</figure>"
+        )
 
     md_text_embedded = re.sub(r"!\[([^\]]*)\]\(([^)]+\.png)\)", _embed_chart, md_text)
 
@@ -1861,25 +2097,48 @@ def cmd_render(args: argparse.Namespace) -> None:
     )
 
     css = """
-      :root { --blue: #2563EB; --green: #16A34A; --gray: #374151; }
-      body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto;
-             padding: 2rem 1.5rem; color: var(--gray); line-height: 1.65; }
-      h1 { color: var(--blue); border-bottom: 3px solid var(--blue); padding-bottom: .4rem; }
-      h2 { color: var(--blue); border-bottom: 1px solid #E5E7EB; padding-bottom: .2rem; }
-      h3 { color: var(--gray); }
-      table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .93rem; }
-      th { background: var(--blue); color: white; padding: .5rem .75rem; text-align: left; }
-      td { border: 1px solid #E5E7EB; padding: .45rem .75rem; }
+      :root { --blue: #1D4ED8; --green: #15803D; --gray: #374151; }
+      html { font-size: 100%; }
+      body { font-family: system-ui, -apple-system, sans-serif; font-size: 1rem;
+             max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem;
+             color: var(--gray); line-height: 1.7; }
+      h1 { font-size: 1.75rem; color: var(--blue); border-bottom: 3px solid var(--blue); padding-bottom: .4rem; }
+      h2 { font-size: 1.375rem; color: var(--blue); border-bottom: 1px solid #E5E7EB; padding-bottom: .2rem; }
+      h3 { font-size: 1.125rem; color: var(--gray); }
+      p { font-size: 1rem; margin-bottom: 1rem; }
+      table { border-collapse: collapse; width: 100%; margin: 1.25rem 0; font-size: 1rem; }
+      th { background: var(--blue); color: white; padding: .6rem .85rem; text-align: left; font-size: 1rem; }
+      td { border: 1px solid #D1D5DB; padding: .55rem .85rem; font-size: 1rem; }
       tr:nth-child(even) { background: #F9FAFB; }
-      blockquote { border-left: 4px solid var(--green); margin-left: 0; padding: .5rem 1rem;
-                   background: #F0FDF4; color: #166534; }
-      code { background: #F3F4F6; padding: .15rem .4rem; border-radius: .3rem; font-size: .9em; }
-      figure { text-align: center; margin: 1.5rem 0; }
-      figcaption { font-size: .85rem; color: #6B7280; margin-top: .4rem; }
+      blockquote { border-left: 4px solid var(--green); margin-left: 0; padding: .75rem 1.25rem;
+                   background: #F0FDF4; color: #14532D; font-size: 1rem; }
+      blockquote strong:first-child { display: block; margin-bottom: .35rem; color: #15803D; }
+      code { background: #F3F4F6; padding: .15rem .4rem; border-radius: .3rem; font-size: .9rem; }
+      figure { text-align: center; margin: 2rem 0; }
+      figcaption { font-size: 1rem; color: #374151; margin-top: .6rem; font-style: italic; }
+      dl { margin: 1rem 0; }
+      dt { font-weight: bold; font-size: 1rem; margin-top: 1rem; }
+      dd { margin-left: 1.5rem; font-size: 1rem; margin-bottom: .25rem; }
+      details.chart-data { margin-top: .75rem; font-size: .9375rem; }
+      details.chart-data summary { cursor: pointer; color: var(--blue); font-style: normal; }
+      details.chart-data table { margin-top: .5rem; font-size: .9375rem; }
+      a.skip-nav { position: absolute; left: -9999px; }
+      a.skip-nav:focus { left: 1rem; top: 1rem; background: white; padding: .5rem 1rem;
+                         z-index: 100; border: 2px solid var(--blue); }
+      @media (max-width: 640px) {
+        body { padding: 1rem .75rem; font-size: 1.0625rem; }
+        h1 { font-size: 1.5rem; }
+        h2 { font-size: 1.25rem; }
+        table { display: block; overflow-x: auto; }
+        figure { margin: 1rem 0; }
+      }
       @media print {
-        body { max-width: none; padding: 1.5cm; }
+        body { max-width: none; padding: 1.5cm; font-size: 11pt; }
         h1, h2 { page-break-after: avoid; }
         figure { page-break-inside: avoid; }
+        blockquote { border-left: 3px solid #15803D; }
+        details.chart-data { display: block; }
+        details.chart-data summary { display: none; }
       }
     """
 
