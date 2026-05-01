@@ -1,6 +1,7 @@
 # Community Technology Survey 2026
 
 **Community demand and trust conditions for a platform co-operative**
+
 Better Together Solutions (BTS) | Newfoundland & Labrador, Canada | May 1, 2026
 
 [![License: CC BY 4.0](https://img.shields.io/badge/Data%20%26%20Report-CC%20BY%204.0-blue)](https://creativecommons.org/licenses/by/4.0/)
