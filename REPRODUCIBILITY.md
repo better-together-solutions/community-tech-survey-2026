@@ -191,3 +191,17 @@ To raise a question, challenge a finding, or report a replication discrepancy:
 - Open an issue in this repository
 - Email rob@bettertogethersolutions.com
 - We commit to responding to substantive methodological challenges within 30 days
+
+---
+
+## Qualitative Tranche Reproducibility Note
+
+The qualitative analysis (Part 2) is **not fully deterministic** due to the use of a local LLM (Ollama `llama3.2:latest`) for initial theme extraction. LLM outputs vary between runs even with `temperature=0`, due to floating-point non-determinism across hardware and model versions.
+
+**What this means for replication:**
+- Theme *labels* may differ between runs; theme *substance* (content, representative quotes) is stable
+- Intercoder reliability (Krippendorff's alpha) was computed by comparing two independent LLM passes; reported values (−0.14 to 0.37) are specific to the original run
+- The underlying verbatim quotes are deterministic — they are drawn directly from the sanitized survey data
+- The quantitative analysis (Part 1) is fully deterministic and replicable to the bit level
+
+**Recommended practice:** When replicating the qualitative analysis, treat LLM outputs as a starting point for human analyst review rather than ground truth. Compare theme substance (not labels) to the published codebook (`docs/codebook.md`).

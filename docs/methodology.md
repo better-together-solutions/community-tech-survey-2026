@@ -183,3 +183,29 @@ All analysis code, data, and prompts are published in this repository. See `REPR
 - Sullivan, G. M., & Artino, A. R. (2013). Analyzing and interpreting data from Likert-type scales. Journal of Graduate Medical Education, 5(4), 541–542.
 - Sweeney, L. (2002). k-anonymity: A model for protecting privacy. International Journal of Uncertainty, Fuzziness and Knowledge-Based Systems, 10(5), 557–570.
 - Xiao, Z., Yuan, X., Liao, Q. V., Cai, R., & Nichols, B. (2023). Supporting qualitative analysis with large language models: Combining codebook with GPT-3 for deductive coding. ACM CHI Conference on Human Factors in Computing Systems, Extended Abstracts.
+
+---
+
+## Publication Schedule
+
+The report is published in two tranches reflecting the differing review requirements for quantitative and qualitative analysis:
+
+### Part 1 — Quantitative Findings (published May 1, 2026)
+
+Covers all statistical analysis: response overview, tool satisfaction (Q5), feature importance scale (Q7, Cronbach's α=0.7748), governance/trust indicators (Q9–Q12), and adoption/pricing analysis (Q50–Q52). No LLM-generated content. Fully reproducible from `quant` stage output alone.
+
+**CE page:** `/community-technology-survey-2026-part-1`
+**Pipeline command:** `python3 analysis/community_technology_survey_analysis.py report --run-id <id> --tranche quant`
+
+### Part 2 — Qualitative Insights (published after editorial review)
+
+Covers all open-text qualitative analysis: AI-assisted thematic coding of 18 questions, cross-question synthesis, sector-specific voices, and the synthesis narrative ("What This Tells Us"). Requires completion of the `qual` stage (Ollama LLM local coding) and human editorial review of IRR metrics before release.
+
+**Rationale for delayed release:** Intercoder reliability (Krippendorff's α) ranged from −0.14 to 0.37 across questions. These values reflect code-label variation across LLM passes rather than theme incoherence, but warrant human review before public attribution. The quantitative findings are not affected.
+
+**CE page:** `/community-technology-survey-2026-part-2`
+**Pipeline command:** `python3 analysis/community_technology_survey_analysis.py report --run-id <id> --tranche qual`
+
+### Combined (for replication)
+
+The full combined report (`report.md`, `report.html`) containing both tranches is produced by the default `all` or `report` (no `--tranche`) command. This is the canonical reproducible artifact for archival purposes.

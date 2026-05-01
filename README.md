@@ -29,6 +29,35 @@ python3 analysis/community_technology_survey_analysis.py all \
 open output/<run_id>/report.html
 ```
 
+### Two-tranche pipeline (quantitative + qualitative split)
+
+The report is published in two tranches. Part 1 (quantitative) can be released immediately
+after running the `quant` stage; Part 2 (qualitative) requires LLM-assisted coding (`qual`)
+and editorial review before release.
+
+```bash
+# Part 1 — quantitative findings (publish first)
+python3 analysis/community_technology_survey_analysis.py report \
+  --run-id <run_id> --tranche quant
+python3 analysis/community_technology_survey_analysis.py render \
+  --run-id <run_id> --tranche quant
+# → output/<run_id>/report_part1.md + report_part1.html
+
+# Part 2 — qualitative insights (hold for review)
+python3 analysis/community_technology_survey_analysis.py qual \
+  --run-id <run_id>        # requires Ollama running locally
+python3 analysis/community_technology_survey_analysis.py report \
+  --run-id <run_id> --tranche qual
+python3 analysis/community_technology_survey_analysis.py render \
+  --run-id <run_id> --tranche qual
+# → output/<run_id>/report_part2.md + report_part2.html
+
+# Full combined report (default, for replication)
+python3 analysis/community_technology_survey_analysis.py all \
+  --input data/original/<survey>.xlsx
+# → output/<run_id>/report.md + report.html
+```
+
 See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for full instructions.
 
 ## Repository Structure

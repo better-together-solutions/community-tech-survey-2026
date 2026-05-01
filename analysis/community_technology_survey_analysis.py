@@ -62,6 +62,22 @@ random.seed(RANDOM_SEED)
 ROOT = Path(__file__).parent.parent
 OUTPUT_BASE = ROOT / "output"
 
+QUANT_CHARTS = [
+    "respondent_types.png",
+    "tool_satisfaction.png",
+    "feature_importance.png",
+    "feature_importance_by_segment.png",
+    "ownership_trust.png",
+    "adoption_barriers.png",
+    "pricing_sensitivity.png",
+]
+QUAL_CHARTS = [
+    "wordcloud_q6.png",
+    "wordcloud_q15.png",
+    "wordcloud_q46.png",
+    "sentiment_distribution.png",
+]
+
 PII_COLUMNS = [
     "64. If you would like contact, you can share your contact information.",
     "65. If helpful, tell us the best time or way to reach you.",
@@ -1046,9 +1062,20 @@ def cmd_visualize(args: argparse.Namespace) -> None:
     sns.set_theme(style="whitegrid", font_scale=1.15)
     plt.rcParams.update({"figure.dpi": 150, "savefig.bbox": "tight"})
 
+    tranche = getattr(args, "tranche", "all")
+    if tranche == "quant":
+        _skip_charts: set[str] = set(QUAL_CHARTS)
+    elif tranche == "qual":
+        _skip_charts = set(QUANT_CHARTS)
+    else:
+        _skip_charts = set()
+
     generated: list[str] = []
 
     def _save(fig: Any, name: str) -> str:
+        if name in _skip_charts:
+            plt.close(fig)
+            return f"[skipped:{name}]"
         path = charts_dir / name
         fig.savefig(path, dpi=150, bbox_inches="tight")
         plt.close(fig)
@@ -1289,6 +1316,7 @@ def cmd_visualize(args: argparse.Namespace) -> None:
 
 
 def cmd_report(args: argparse.Namespace) -> None:
+    tranche = getattr(args, "tranche", "all")  # "quant" | "qual" | "all"
     run_dir = _run_id_dir(args.run_id)
     quant_file = run_dir / "quant" / "quant_results.json"
     if not quant_file.exists():
@@ -1382,12 +1410,36 @@ def cmd_report(args: argparse.Namespace) -> None:
             return "_No data_"
         return "| Response | n | % |\n|---|---|---|\n" + "\n".join(rows)
 
+    _tranche_subtitle = {
+        "quant": ": Quantitative Findings (Part 1 of 2)",
+        "qual": ": Qualitative Insights (Part 2 of 2)",
+        "all": "",
+    }.get(tranche, "")
+
     report_lines: list[str] = [
-        "# Community Technology Survey: Community Demand and Trust Conditions for a Platform Co-operative",
+        f"# Community Technology Survey{_tranche_subtitle}",
         "",
         "> **Better Together Solutions (BTS)** | May 1, 2026 | Newfoundland & Labrador, Canada",
         "> Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)",
         "",
+    ]
+
+    if tranche == "qual":
+        report_lines += [
+            "> **Note:** This is Part 2 of the 2026 Community Technology Survey report, covering qualitative "
+            "insights from open-text responses. For quantitative findings (response distributions, statistical "
+            "analysis, and charts), see [Part 1](/community-technology-survey-2026-part-1).",
+            "",
+        ]
+    elif tranche == "quant":
+        report_lines += [
+            "> **Note:** This is Part 1 of the 2026 Community Technology Survey report, covering quantitative "
+            "findings. A companion [Part 2](/community-technology-survey-2026-part-2) presenting qualitative "
+            "insights will follow after editorial review.",
+            "",
+        ]
+
+    report_lines += [
         "---",
         "",
         "## Executive Summary",
@@ -1473,14 +1525,19 @@ def cmd_report(args: argparse.Namespace) -> None:
         "",
         _freq_md("q6_problems_id"),
         "",
-        _chart_embed("wordcloud_q6.png"),
-        "",
-        "**Key themes in respondents' own words:**",
-        "",
-        _top_themes("q6_problems"),
-        "",
-        _top_quotes("q6_problems"),
-        "",
+    ]
+    if tranche != "quant":
+        report_lines += [
+            _chart_embed("wordcloud_q6.png"),
+            "",
+            "**Key themes in respondents' own words:**",
+            "",
+            _top_themes("q6_problems"),
+            "",
+            _top_quotes("q6_problems"),
+            "",
+        ]
+    report_lines += [
         "---",
         "",
         "## 3. What Communities Want in a Platform",
@@ -1528,121 +1585,163 @@ def cmd_report(args: argparse.Namespace) -> None:
         f"**Adoption impact.** {q12_positive} said the co-operative model would make them more likely to use, "
         "support, or adopt it.",
         "",
-        "### What Makes a Platform Feel Trustworthy",
-        "",
-        _chart_embed("wordcloud_q15.png"),
-        "",
-        _top_themes("q15_trustworthy"),
-        "",
-        _top_quotes("q15_trustworthy"),
-        "",
+    ]
+    if tranche != "quant":
+        report_lines += [
+            "### What Makes a Platform Feel Trustworthy",
+            "",
+            _chart_embed("wordcloud_q15.png"),
+            "",
+            _top_themes("q15_trustworthy"),
+            "",
+            _top_quotes("q15_trustworthy"),
+            "",
+        ]
+    report_lines += [
         "---",
         "",
-        "## 5. Voices by Sector",
-        "",
-        "> Sector-specific questions were shown only to respondents who identified with that sector. "
-        "Segments with N < 5 are summarised descriptively without frequency tables to protect anonymity.",
-        "",
-        "### 5.1 General Public",
-        "",
-        _top_themes("q15_trustworthy"),
-        "",
-        "### 5.2 Co-operatives",
-        "",
-        _top_themes("q20_coop_trust"),
-        "",
-        "### 5.3 Non-profits",
-        "",
-        _top_themes("q22_nonprofit_burdens"),
-        "",
-        "### 5.4 Community Groups",
-        "",
-        _top_themes("q26_community_difficulties"),
-        "",
-        "### 5.5 Unions",
-        "",
-        _top_themes("q29_union_needs"),
-        "",
-        "### 5.6 Municipalities & Public Institutions",
-        "",
-        _top_themes("q33_muni_requirements"),
-        "",
-        "### 5.7 Activists & Advocacy Organizations",
-        "",
-        _top_themes("q36_activist_risks"),
-        "",
-        "---",
-        "",
-        "## 6. Adoption & Economic Readiness",
-        "",
-        _chart_embed("adoption_barriers.png"),
-        "",
-        "**Adoption barriers (multi-select):**",
-        "",
-        _freq_md("q50_barriers_id"),
-        "",
-        "**Support needed (multi-select):**",
-        "",
-        _freq_md("q51_support_id"),
-        "",
-        "**Price sensitivity:**",
-        "",
-        _freq_md("q52_price_sensitivity_id"),
-        "",
-        "---",
-        "",
-        "## 7. Listening to the Community",
-        "",
-        "### Themes Across All Open-Text Responses",
-        "",
-        _chart_embed("sentiment_distribution.png"),
-        "",
-        "> **Methodological note on AI-assisted coding.** Themes below were generated using Reflexive Thematic "
-        "Analysis (Braun & Clarke, 2021) with AI-assisted initial coding (Llama 3.2). Intercoder reliability "
-        "(Krippendorff's α) ranged from −0.14 to 0.37 across questions. These below-threshold values reflect "
-        "code-name variation across LLM passes — a known limitation of exact-match reliability measures for "
-        "LLM coding — rather than theme incoherence. Themes should be treated as **exploratory and "
-        "hypothesis-generating**. Verbatim quotes are drawn from raw survey data. Human analyst review of "
-        "the full codebook (`docs/codebook.md`) is recommended before citing individual themes.",
-        "",
-        _top_themes("q46_comments"),
-        "",
-        "### Representative Voices",
-        "",
-        _top_quotes("q46_comments", max_q=5),
-        "",
-        "---",
-        "",
-        "## 8. What This Tells Us",
-        "",
-        "The findings from this survey tell a clear and consistent story: communities in Newfoundland & "
-        "Labrador are ready for an alternative to the current digital platform landscape. Dissatisfaction "
-        "with fragmented, expensive, and unaccountable corporate tools is widespread. At the same time, "
-        "there is strong appetite for a community-owned model — one that is transparent, governed democratically, "
-        "and built to serve long-term community needs rather than shareholder returns.",
-        "",
-        "The near-universal value placed on accessibility and privacy — alongside a strong showing for "
-        "shared governance — signals that a platform co-operative would need to be designed from the "
-        "ground up for inclusion, not retrofitted from a commercial product.",
-        "",
-        "Adoption readiness is real but conditional. The most commonly cited barriers — uncertainty about "
-        "long-term sustainability, cost, and lack of documentation — are solvable problems. They call for "
-        "clear communication, gradual onboarding, and demonstrated governance before formal commitment.",
-        "",
-        "---",
-        "",
-        "## Appendix A: Survey Instrument",
-        "",
-        "_The complete survey instrument is published in `docs/survey_instrument.md` in this repository._",
-        "",
-        "## Appendix B: Statistical Methods",
-        "",
-        "_See `docs/methodology.md` for full statistical methods, analysis decisions, and citations._",
-        "",
-        "## Appendix C: Qualitative Codebook",
-        "",
-        "_Coding prompts (the operational codebook) are published verbatim in `docs/codebook.md`._",
-        "",
+    ]
+    # §5 Voices by Sector — qual only
+    if tranche != "quant":
+        report_lines += [
+            "## 5. Voices by Sector",
+            "",
+            "> Sector-specific questions were shown only to respondents who identified with that sector. "
+            "Segments with N < 5 are summarised descriptively without frequency tables to protect anonymity.",
+            "",
+            "### 5.1 General Public",
+            "",
+            _top_themes("q15_trustworthy"),
+            "",
+            "### 5.2 Co-operatives",
+            "",
+            _top_themes("q20_coop_trust"),
+            "",
+            "### 5.3 Non-profits",
+            "",
+            _top_themes("q22_nonprofit_burdens"),
+            "",
+            "### 5.4 Community Groups",
+            "",
+            _top_themes("q26_community_difficulties"),
+            "",
+            "### 5.5 Unions",
+            "",
+            _top_themes("q29_union_needs"),
+            "",
+            "### 5.6 Municipalities & Public Institutions",
+            "",
+            _top_themes("q33_muni_requirements"),
+            "",
+            "### 5.7 Activists & Advocacy Organizations",
+            "",
+            _top_themes("q36_activist_risks"),
+            "",
+            "---",
+            "",
+        ]
+
+    # §6 Adoption & Economic Readiness — always (pure quant)
+    if tranche != "qual":
+        report_lines += [
+            "## 6. Adoption & Economic Readiness",
+            "",
+            _chart_embed("adoption_barriers.png"),
+            "",
+            "**Adoption barriers (multi-select):**",
+            "",
+            _freq_md("q50_barriers_id"),
+            "",
+            "**Support needed (multi-select):**",
+            "",
+            _freq_md("q51_support_id"),
+            "",
+            "**Price sensitivity:**",
+            "",
+            _freq_md("q52_price_sensitivity_id"),
+            "",
+            _chart_embed("pricing_sensitivity.png"),
+            "",
+            "---",
+            "",
+        ]
+
+    # §7 Listening to the Community — qual only
+    if tranche != "quant":
+        report_lines += [
+            "## 7. Listening to the Community",
+            "",
+            "### Themes Across All Open-Text Responses",
+            "",
+            _chart_embed("sentiment_distribution.png"),
+            "",
+            "> **Methodological note on AI-assisted coding.** Themes below were generated using Reflexive Thematic "
+            "Analysis (Braun & Clarke, 2021) with AI-assisted initial coding (Llama 3.2). Intercoder reliability "
+            "(Krippendorff's α) ranged from −0.14 to 0.37 across questions. These below-threshold values reflect "
+            "code-name variation across LLM passes — a known limitation of exact-match reliability measures for "
+            "LLM coding — rather than theme incoherence. Themes should be treated as **exploratory and "
+            "hypothesis-generating**. Verbatim quotes are drawn from raw survey data. Human analyst review of "
+            "the full codebook (`docs/codebook.md`) is recommended before citing individual themes.",
+            "",
+            _top_themes("q46_comments"),
+            "",
+            "### Representative Voices",
+            "",
+            _top_quotes("q46_comments", max_q=5),
+            "",
+            "---",
+            "",
+        ]
+
+    # §8 What This Tells Us — qual only (synthesis + CTA)
+    if tranche != "quant":
+        report_lines += [
+            "## 8. What This Tells Us",
+            "",
+            "The findings from this survey tell a clear and consistent story: communities in Newfoundland & "
+            "Labrador are ready for an alternative to the current digital platform landscape. Dissatisfaction "
+            "with fragmented, expensive, and unaccountable corporate tools is widespread. At the same time, "
+            "there is strong appetite for a community-owned model — one that is transparent, governed democratically, "
+            "and built to serve long-term community needs rather than shareholder returns.",
+            "",
+            "The near-universal value placed on accessibility and privacy — alongside a strong showing for "
+            "shared governance — signals that a platform co-operative would need to be designed from the "
+            "ground up for inclusion, not retrofitted from a commercial product.",
+            "",
+            "Adoption readiness is real but conditional. The most commonly cited barriers — uncertainty about "
+            "long-term sustainability, cost, and lack of documentation — are solvable problems. They call for "
+            "clear communication, gradual onboarding, and demonstrated governance before formal commitment.",
+            "",
+            "---",
+            "",
+        ]
+
+    # Appendices — A (instrument) and C (codebook) are qual only; B, D, E always
+    if tranche != "quant":
+        report_lines += [
+            "## Appendix A: Survey Instrument",
+            "",
+            "_The complete survey instrument is published in `docs/survey_instrument.md` in this repository._",
+            "",
+        ]
+
+    if tranche != "qual":
+        report_lines += [
+            "## Appendix B: Statistical Methods",
+            "",
+            "_See `docs/methodology.md` for full statistical methods, analysis decisions, and citations._",
+            "",
+        ]
+
+    if tranche != "quant":
+        report_lines += [
+            "## Appendix C: Qualitative Codebook",
+            "",
+            "_Coding prompts (the operational codebook) are published verbatim in `docs/codebook.md`._",
+            "",
+        ]
+
+    report_lines += [
         "## Appendix D: Privacy & Data Protection",
         "",
         "_See `docs/privacy.md` for the privacy impact assessment, k-anonymity analysis, and PIPEDA "
@@ -1658,11 +1757,17 @@ def cmd_report(args: argparse.Namespace) -> None:
         "",
     ]
 
-    out = run_dir / "report.md"
+    # Output filename varies by tranche
+    _report_name = {
+        "quant": "report_part1.md",
+        "qual": "report_part2.md",
+        "all": "report.md",
+    }.get(tranche, "report.md")
+    out = run_dir / _report_name
     out.write_text("\n".join(report_lines), encoding="utf-8")
-    _update_manifest(run_dir, "report", {"sha256": _sha256(out)})
-    _log_event(run_dir, "report_complete", {"output": str(out)})
-    print(f"Report assembled → {out}")
+    _update_manifest(run_dir, f"report_{tranche}", {"sha256": _sha256(out), "tranche": tranche})
+    _log_event(run_dir, "report_complete", {"output": str(out), "tranche": tranche})
+    print(f"Report assembled [{tranche}] → {out}")
 
 
 # ── Stage 7: Render HTML ──────────────────────────────────────────────────────
@@ -1671,10 +1776,12 @@ def cmd_report(args: argparse.Namespace) -> None:
 def cmd_render(args: argparse.Namespace) -> None:
     import markdown as md_lib
 
+    tranche = getattr(args, "tranche", "all")
     run_dir = _run_id_dir(args.run_id)
-    report_md = run_dir / "report.md"
+    _md_name = {"quant": "report_part1.md", "qual": "report_part2.md", "all": "report.md"}.get(tranche, "report.md")
+    report_md = run_dir / _md_name
     if not report_md.exists():
-        sys.exit("Run 'report' stage first")
+        sys.exit(f"Run 'report --tranche {tranche}' stage first (expected {report_md})")
 
     md_text = report_md.read_text(encoding="utf-8")
 
@@ -1740,11 +1847,12 @@ def cmd_render(args: argparse.Namespace) -> None:
 </body>
 </html>"""
 
-    out = run_dir / "report.html"
+    _html_name = {"quant": "report_part1.html", "qual": "report_part2.html", "all": "report.html"}.get(tranche, "report.html")
+    out = run_dir / _html_name
     out.write_text(html, encoding="utf-8")
-    _update_manifest(run_dir, "render", {"sha256": _sha256(out), "size_bytes": out.stat().st_size})
-    _log_event(run_dir, "render_complete", {"output": str(out)})
-    print(f"Report rendered → {out}  ({out.stat().st_size // 1024} KB)")
+    _update_manifest(run_dir, f"render_{tranche}", {"sha256": _sha256(out), "size_bytes": out.stat().st_size, "tranche": tranche})
+    _log_event(run_dir, "render_complete", {"output": str(out), "tranche": tranche})
+    print(f"Report rendered [{tranche}] → {out}  ({out.stat().st_size // 1024} KB)")
 
 
 # ── Stage 8: Publication Package ─────────────────────────────────────────────
@@ -1754,6 +1862,7 @@ def cmd_package(args: argparse.Namespace) -> None:
     """Bundle all reproducibility artifacts into a publication package."""
     import zipfile
 
+    tranche = getattr(args, "tranche", "all")
     run_dir = _run_id_dir(args.run_id)
     pkg_dir = run_dir / "package"
     pkg_dir.mkdir(exist_ok=True)
@@ -1768,10 +1877,14 @@ def cmd_package(args: argparse.Namespace) -> None:
     (pkg_dir / "SHA256SUMS").write_text("\n".join(checksums))
 
     # Create zip archive
-    zip_name = ROOT / f"community-tech-survey-package-{args.run_id}.zip"
+    _zip_suffix = {"quant": "-part1", "qual": "-part2", "all": ""}.get(tranche, "")
+    zip_name = ROOT / f"community-tech-survey-package{_zip_suffix}-{args.run_id}.zip"
+    # Determine which report files to include for this tranche
+    _report_md = {"quant": "report_part1.md", "qual": "report_part2.md", "all": "report.md"}.get(tranche, "report.md")
+    _report_html = {"quant": "report_part1.html", "qual": "report_part2.html", "all": "report.html"}.get(tranche, "report.html")
     with zipfile.ZipFile(zip_name, "w", zipfile.ZIP_DEFLATED) as zf:
         # Core outputs
-        for f in [run_dir / "report.html", run_dir / "report.md"]:
+        for f in [run_dir / _report_html, run_dir / _report_md]:
             if f.exists():
                 zf.write(f, f"report/{f.name}")
         # Data
@@ -1869,6 +1982,13 @@ def main() -> None:
         sub.add_argument("--input", default=None)
         sub.add_argument("--ollama-host", default=os.environ.get("OLLAMA_HOST", "http://localhost:11435"))
         sub.add_argument("--ollama-model", default=os.environ.get("OLLAMA_MODEL", "llama3.2:latest"))
+        if cmd_name in ("visualize", "report", "render", "package", "all"):
+            sub.add_argument(
+                "--tranche",
+                choices=["quant", "qual", "all"],
+                default="all",
+                help="Restrict output to quantitative (quant), qualitative (qual), or full (all) report",
+            )
 
     args = parser.parse_args()
     # Subparser args override parent defaults when provided
