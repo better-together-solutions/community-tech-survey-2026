@@ -1,0 +1,19 @@
+# Generated analysis outputs (run-specific)
+output/*/
+
+# Exceptions: keep the final publication package when generated
+!output/package/
+
+# Raw (PII-containing) xlsx exports
+data/original/*.xlsx
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.env
+tmp/
+
+# OS
+.DS_Store

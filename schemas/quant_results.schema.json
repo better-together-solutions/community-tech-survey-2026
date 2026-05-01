@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bettertogethersolutions.com/schemas/community-tech-survey/quant_results.schema.json",
+  "title": "Community Technology Survey — Quantitative Results",
+  "description": "Output schema for community_technology_survey_analysis.py quant stage",
+  "type": "object",
+  "required": ["analysis_date", "n_total", "n_completed"],
+  "properties": {
+    "analysis_date": { "type": "string", "format": "date-time" },
+    "statistical_significance_threshold": { "type": "number" },
+    "random_seed": { "type": "integer" },
+    "bootstrap_iterations": { "type": "integer" },
+    "n_total": { "type": "integer" },
+    "n_completed": { "type": "integer" },
+    "n_partial": { "type": "integer" },
+    "completion_rate_pct": { "type": "number" },
+    "overview": {
+      "type": "object",
+      "properties": {
+        "ua_os": { "$ref": "#/$defs/freq_table" },
+        "ua_device": { "$ref": "#/$defs/freq_table" },
+        "ua_browser": { "$ref": "#/$defs/freq_table" }
+      }
+    },
+    "respondent_types": {
+      "type": "object",
+      "properties": {
+        "all_responses": { "$ref": "#/$defs/freq_table" },
+        "completed_only": { "$ref": "#/$defs/freq_table" },
+        "note": { "type": "string" }
+      }
+    },
+    "q5_tool_satisfaction": { "$ref": "#/$defs/continuous_stats" },
+    "q7_feature_importance": {
+      "type": "object",
+      "properties": {
+        "items_ranked": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/likert_item_stats" }
+        },
+        "cronbach_alpha": { "$ref": "#/$defs/cronbach_result" },
+        "kruskal_wallis_by_group": { "type": "object" },
+        "segment_heatmap": { "type": "object" }
+      }
+    },
+    "missing_data": {
+      "type": "object",
+      "properties": {
+        "note": { "type": "string" },
+        "per_column": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "n_missing": { "type": "integer" },
+              "pct_missing": { "type": "number" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "freq_table": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["value", "n", "pct"],
+        "properties": {
+          "value": { "type": "string" },
+          "n": { "type": "integer" },
+          "pct": { "type": "number" }
+        }
+      }
+    },
+    "continuous_stats": {
+      "type": "object",
+      "properties": {
+        "n": { "type": "integer" },
+        "mean": { "type": "number" },
+        "median": { "type": "number" },
+        "sd": { "type": "number" },
+        "mode": { "type": "number" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "iqr": { "type": "number" },
+        "skewness": { "type": "number" },
+        "kurtosis": { "type": "number" },
+        "bootstrap_95ci_mean": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "shapiro_wilk_p": { "type": ["number", "null"] },
+        "distribution": { "$ref": "#/$defs/freq_table" }
+      }
+    },
+    "likert_item_stats": {
+      "type": "object",
+      "properties": {
+        "item": { "type": "string" },
+        "label": { "type": "string" },
+        "n": { "type": "integer" },
+        "mean": { "type": "number" },
+        "median": { "type": "number" },
+        "sd": { "type": "number" },
+        "iqr": { "type": "number" },
+        "bootstrap_95ci_mean": {
+          "type": "array",
+          "items": { "type": "number" }
+        },
+        "distribution": { "$ref": "#/$defs/freq_table" }
+      }
+    },
+    "cronbach_result": {
+      "type": "object",
+      "properties": {
+        "value": { "type": "number" },
+        "n_items": { "type": "integer" },
+        "n_respondents": { "type": "integer" },
+        "interpretation": { "type": "string" },
+        "reference": { "type": "string" }
+      }
+    }
+  }
+}

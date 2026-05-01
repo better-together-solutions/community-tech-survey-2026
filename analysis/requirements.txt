@@ -1,0 +1,12 @@
+pandas==2.2.3
+matplotlib==3.9.4
+seaborn==0.13.2
+wordcloud==1.9.4
+scipy==1.14.1
+numpy==2.2.6
+openpyxl==3.1.5
+pingouin==0.5.5
+krippendorff==0.6.1
+markdown==3.3.6
+Pillow==11.2.1
+requests==2.32.3
